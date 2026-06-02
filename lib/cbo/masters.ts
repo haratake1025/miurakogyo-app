@@ -101,24 +101,87 @@ export async function listEmployees(): Promise<CboEmployee[]> {
 }
 
 // ===== 協力会社＋スタッフ一覧 =====
-// TODO(T2.0): レスポンス構造を疎通確認で確定
+// 実レスポンス: { data: [{id, tree: {key, value, children}}] }
+// tree は CBO のフォームスキーマ＋値が入れ子構造。staff_information > staff にスタッフが repeatable で入る。
+// T2.0疎通確認済み: URL は supplier_custom_views/{viewId}/suppliers
+
+// ---- 内部型 ----
+
+type TreeVal = {
+  id: number
+  parent_id: number | null
+  key: string
+  value: unknown
+}
+
+type TreeNode = {
+  id: number
+  key: string
+  type: string
+  value: TreeVal[]
+  children?: TreeNode[]
+}
+
+type SupplierEntry = {
+  id: number
+  tree: TreeNode
+}
+
+function findNode(node: TreeNode, key: string): TreeNode | null {
+  if (node.key === key) return node
+  for (const child of node.children ?? []) {
+    const found = findNode(child, key)
+    if (found) return found
+  }
+  return null
+}
+
+function treeLeafVal(node: TreeNode, key: string): unknown {
+  const n = findNode(node, key)
+  return n?.value?.[0]?.value ?? null
+}
+
+function extractStaff(tree: TreeNode, supplierId: string, companyName: string): CboPartnerWorker[] {
+  const staffInfoNode = findNode(tree, 'staff_information')
+  if (!staffInfoNode) return []
+
+  const staffNode = findNode(staffInfoNode, 'staff')
+  if (!staffNode) return []
+
+  const lastNameNode = findNode(staffNode, 'staff_last_name')
+  const firstNameNode = findNode(staffNode, 'staff_first_name')
+
+  const lastNames = new Map(
+    (lastNameNode?.value ?? []).map((v) => [v.parent_id, String(v.value ?? '')])
+  )
+  const firstNames = new Map(
+    (firstNameNode?.value ?? []).map((v) => [v.parent_id, String(v.value ?? '')])
+  )
+
+  return (staffNode.value ?? [])
+    .map((inst) => ({
+      cboSupplierId: supplierId,
+      cboSupplierStaffId: String(inst.id),
+      companyName,
+      workerName: [lastNames.get(inst.id), firstNames.get(inst.id)].filter(Boolean).join(''),
+    }))
+    .filter((w) => w.workerName !== '')
+}
 
 export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
-  const res = await cboFetch<{
-    data: Array<{ id: number; name: string; staffs?: Array<Record<string, unknown>> }>
-  }>('/suppliers?supplier_format_id=5307')
+  // viewId は三浦興業環境固有。env 未設定時は確認済みの値をフォールバック
+  const viewId = process.env.CBO_SUPPLIER_VIEW_ID ?? '2744'
+  const res = await cboFetch<{ data: SupplierEntry[] | SupplierEntry }>(
+    `/supplier_custom_views/${viewId}/suppliers?per_page=100`
+  )
+
+  const suppliers: SupplierEntry[] = Array.isArray(res.data) ? res.data : [res.data]
 
   const workers: CboPartnerWorker[] = []
-  for (const supplier of res.data) {
-    const staffList = supplier.staffs ?? []
-    for (const staff of staffList) {
-      workers.push({
-        cboSupplierId: String(supplier.id),
-        cboSupplierStaffId: String(staff['id']),
-        companyName: supplier.name,
-        workerName: String(staff['last_name'] ?? staff['name'] ?? ''),
-      })
-    }
+  for (const supplier of suppliers) {
+    if (!supplier?.tree) continue
+    const name = String(treeLeafVal(supplier.tree, 'name') ?? supplier.id)
+    workers.push(...extractStaff(supplier.tree, String(supplier.id), name))
   }
   return workers
 }

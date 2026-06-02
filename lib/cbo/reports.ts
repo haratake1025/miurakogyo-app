@@ -62,8 +62,8 @@ type CreateResponse = Record<string, unknown>
 export async function createAttendanceReport(
   payload: CboReportPayload
 ): Promise<{ cboReportId: string }> {
-  // ⚠ パス単数形 /personal_daily_report（更新/削除は複数形と異なる）
-  const res = await cboFetch<CreateResponse>('/personal_daily_report', {
+  // フォーマットIDをパスに含める（T2.0疎通確認済み）
+  const res = await cboFetch<CreateResponse>('/personal_daily_report/formats/4879/', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -81,7 +81,7 @@ export async function updateAttendanceReport(
   cboReportId: string,
   payload: CboReportPayload
 ): Promise<void> {
-  await cboFetch<unknown>(`/personal_daily_reports/${cboReportId}`, {
+  await cboFetch<unknown>(`/personal_daily_reports/${cboReportId}/tree_and_value`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
