@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient as createSsrBrowserClient } from '@supabase/ssr'
 
 // ブラウザ用クライアント（Supabase Auth / anon key）
 // NEXT_PUBLIC_ 変数のみ使用する
@@ -10,5 +10,5 @@ export function createBrowserClient() {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定です')
   }
 
-  return createClient(url, key)
+  return createSsrBrowserClient(url, key)
 }
