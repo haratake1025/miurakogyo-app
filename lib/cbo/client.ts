@@ -1,7 +1,7 @@
 // CBO API 共通 HTTP クライアント（サーバー専用）
 // CBO_TOKEN はサーバー側シークレット。このモジュールをクライアントバンドルに含めてはいけない
 
-const BASE_URL = process.env.CBO_BASE_URL ?? 'https://api.office.craft-bank.com'
+const BASE_URL = process.env.CBO_BASE_URL ?? 'https://office.craft-bank.com/api'
 
 // GAS実装に倣い連続呼び出しは 500ms 間隔を空ける
 const THROTTLE_MS = 500
