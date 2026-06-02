@@ -1,0 +1,118 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/auth'
+import { buildAttendancePayload, createAttendanceReport, updateAttendanceReport } from '@/lib/cbo/reports'
+
+export async function POST(req: NextRequest) {
+  const user = await getAuthenticatedUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { siteId, ids } = await req.json()
+  if (!siteId) return NextResponse.json({ error: 'siteId は必須です' }, { status: 400 })
+
+  const supabase = createServerClient()
+  const pushedAt = new Date().toISOString()
+
+  // 現場情報
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('id, cbo_order_id')
+    .eq('id', siteId)
+    .single()
+
+  if (siteError || !site) {
+    return NextResponse.json({ error: '現場が見つかりません' }, { status: 404 })
+  }
+
+  // 未同期レコードを取得
+  let query = supabase
+    .from('daily_reports')
+    .select('*, worker:workers(*)')
+    .eq('site_id', siteId)
+    .in('sync_status', ['local_new', 'local_edited'])
+
+  if (ids?.length) query = query.in('id', ids)
+
+  const { data: reports, error: reportsError } = await query
+  if (reportsError) return NextResponse.json({ error: reportsError.message }, { status: 500 })
+  if (!reports?.length) return NextResponse.json({ pushed: 0, errors: 0 })
+
+  let pushed = 0
+  let errors = 0
+
+  for (const report of reports) {
+    const worker = report.worker as Record<string, unknown>
+    if (!worker) continue
+
+    // reporter_cbo_user_id が未設定の場合はスキップ（T2.0疎通確認後に要件確認）
+    const reporterId = report.reporter_cbo_user_id
+    if (!reporterId) {
+      errors++
+      continue
+    }
+
+    try {
+      const workerInput =
+        worker.source_kind === 'employee'
+          ? { kind: 'employee' as const, companyUserId: Number(worker.cbo_company_user_id) }
+          : {
+              kind: 'partner' as const,
+              supplierId: Number(worker.cbo_supplier_id),
+              supplierStaffId: Number(worker.cbo_supplier_staff_id),
+            }
+
+      const payload = buildAttendancePayload({
+        reporterId: Number(reporterId),
+        date: report.work_date,
+        orderId: Number(site.cbo_order_id),
+        worker: workerInput,
+        dayYakanId: Number(report.day_yakan_id) || 105360,
+        overHour: report.over_hour,
+        workContentId: Number(report.work_content_id) || 106548,
+        healthTypeId: Number(report.health_type_id) || 106556,
+      })
+
+      let cboReportId = report.cbo_report_id
+
+      if (report.sync_status === 'local_new') {
+        const res = await createAttendanceReport(payload)
+        cboReportId = res.cboReportId
+      } else {
+        await updateAttendanceReport(cboReportId!, payload)
+      }
+
+      // 成功: synced に更新
+      await supabase
+        .from('daily_reports')
+        .update({
+          sync_status: 'synced',
+          cbo_report_id: cboReportId,
+          cbo_synced_at: pushedAt,
+          updated_by: user.id,
+        })
+        .eq('id', report.id)
+
+      await supabase.from('sync_logs').insert({
+        direction: 'push', target: 'report',
+        record_id: report.id, cbo_report_id: cboReportId,
+        status: 'success',
+        message: report.sync_status === 'local_new' ? '新規作成' : '更新',
+        performed_by: user.id, performed_at: pushedAt,
+      })
+
+      pushed++
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      await supabase.from('sync_logs').insert({
+        direction: 'push', target: 'report',
+        record_id: report.id, cbo_report_id: report.cbo_report_id,
+        status: 'error', message: msg,
+        payload_snapshot: report,
+        performed_by: user.id, performed_at: pushedAt,
+      })
+      errors++
+    }
+  }
+
+  return NextResponse.json({ pushed, errors })
+}

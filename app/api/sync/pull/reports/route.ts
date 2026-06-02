@@ -1,0 +1,114 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/auth'
+import { listAttendanceReports } from '@/lib/cbo/masters'
+import { toReportRow } from '@/lib/cbo/normalize'
+
+export async function POST(req: NextRequest) {
+  const user = await getAuthenticatedUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { siteId, from, to } = await req.json()
+  if (!siteId || !from || !to) {
+    return NextResponse.json({ error: 'siteId / from / to は必須です' }, { status: 400 })
+  }
+
+  const supabase = createServerClient()
+  const pulledAt = new Date().toISOString()
+
+  // 現場の cbo_order_id を取得
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('id, cbo_order_id')
+    .eq('id', siteId)
+    .single()
+
+  if (siteError || !site) {
+    return NextResponse.json({ error: '現場が見つかりません' }, { status: 404 })
+  }
+
+  // 作業者の CBO ID → DB UUID マップを構築
+  const { data: workers } = await supabase
+    .from('workers')
+    .select('id, source_kind, cbo_company_user_id, cbo_supplier_id, cbo_supplier_staff_id')
+
+  const employeeWorkerMap = new Map(
+    (workers ?? [])
+      .filter((w) => w.source_kind === 'employee' && w.cbo_company_user_id)
+      .map((w) => [w.cbo_company_user_id as string, w.id as string])
+  )
+  const partnerWorkerMap = new Map(
+    (workers ?? [])
+      .filter((w) => w.source_kind === 'partner')
+      .map((w) => [`${w.cbo_supplier_id}:${w.cbo_supplier_staff_id}`, w.id as string])
+  )
+
+  // CBO から出面取得
+  let cboReports
+  try {
+    cboReports = await listAttendanceReports(site.cbo_order_id, { from, to })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    await supabase.from('sync_logs').insert({
+      direction: 'pull', target: 'report',
+      status: 'error', message: msg,
+      performed_by: user.id, performed_at: pulledAt,
+    })
+    return NextResponse.json({ error: msg }, { status: 502 })
+  }
+
+  // 既存レコードの sync_status を取得（競合検知用）
+  const cboIds = cboReports.map((r) => r.cboReportId).filter(Boolean)
+  const { data: existingReports } = cboIds.length
+    ? await supabase
+        .from('daily_reports')
+        .select('id, cbo_report_id, sync_status')
+        .in('cbo_report_id', cboIds)
+    : { data: [] }
+
+  const existingMap = new Map(
+    (existingReports ?? []).map((r) => [r.cbo_report_id as string, r])
+  )
+
+  let upserted = 0
+  let conflicts = 0
+
+  for (const report of cboReports) {
+    // worker_id を解決
+    let workerId: string | undefined
+    if (report.companyUserId) {
+      workerId = employeeWorkerMap.get(report.companyUserId)
+    } else if (report.supplierId && report.supplierStaffId) {
+      workerId = partnerWorkerMap.get(`${report.supplierId}:${report.supplierStaffId}`)
+    }
+
+    if (!workerId) continue // 未知の作業者はスキップ
+
+    const existing = existingMap.get(report.cboReportId)
+    const isConflict = existing?.sync_status === 'local_edited'
+
+    const row = toReportRow(report, site.id, workerId, pulledAt)
+    const rowWithStatus = {
+      ...row,
+      sync_status: isConflict ? ('conflict' as const) : ('synced' as const),
+    }
+
+    const { error } = await supabase
+      .from('daily_reports')
+      .upsert(rowWithStatus, { onConflict: 'cbo_report_id' })
+
+    if (!error) {
+      upserted++
+      if (isConflict) conflicts++
+    }
+  }
+
+  await supabase.from('sync_logs').insert({
+    direction: 'pull', target: 'report',
+    status: 'success',
+    message: `${upserted}件取込（競合${conflicts}件）`,
+    performed_by: user.id, performed_at: pulledAt,
+  })
+
+  return NextResponse.json({ upserted, conflicts })
+}
