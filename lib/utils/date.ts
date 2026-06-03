@@ -1,3 +1,5 @@
+import HolidayJP from '@holiday-jp/holiday_jp'
+
 export function getDaysInMonth(yearMonth: string): string[] {
   const [year, month] = yearMonth.split('-').map(Number)
   const days: string[] = []
@@ -16,9 +18,17 @@ export function getDayLabel(dateStr: string) {
   return { day: d.getDay(), label: WEEK[d.getDay()] }
 }
 
+export function isHoliday(dateStr: string): boolean {
+  try {
+    return HolidayJP.isHoliday(new Date(dateStr + 'T00:00:00'))
+  } catch {
+    return false
+  }
+}
+
 export function dayHeaderClass(dateStr: string): string {
   const day = new Date(dateStr + 'T00:00:00').getDay()
-  if (day === 0) return 'bg-red-50 text-red-600'
+  if (day === 0 || isHoliday(dateStr)) return 'bg-red-50 text-red-600'
   if (day === 6) return 'bg-blue-50 text-blue-600'
   return ''
 }

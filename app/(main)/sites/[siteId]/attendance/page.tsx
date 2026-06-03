@@ -50,12 +50,21 @@ export default function AttendancePage({
               <p className="text-xs text-gray-500">現場責任者: {site.manager_name}</p>
             )}
           </div>
-          <Link
-            href={`/sites/${siteId}/asbestos`}
-            className="text-xs px-3 py-1.5 border border-orange-300 text-orange-600 rounded hover:bg-orange-50"
-          >
-            石綿記録へ →
-          </Link>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/sites/${siteId}/export?month=${month}`}
+              download
+              className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
+            >
+              Excel出力
+            </a>
+            <Link
+              href={`/sites/${siteId}/asbestos`}
+              className="text-xs px-3 py-1.5 border border-orange-300 text-orange-600 rounded hover:bg-orange-50"
+            >
+              石綿記録へ →
+            </Link>
+          </div>
         </div>
 
         {/* Month switcher */}
