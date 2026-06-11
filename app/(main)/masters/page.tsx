@@ -34,6 +34,19 @@ function WorkerTable({ workers }: { workers: Worker[] }) {
   )
 }
 
+function onPullSuccess(data: { sites?: number; workers?: number; errors?: string[] }, qc: ReturnType<typeof useQueryClient>) {
+  if (data.errors?.length) {
+    toast.error(`取込エラー: ${data.errors[0]}`)
+  } else {
+    const parts = []
+    if (data.sites) parts.push(`現場 ${data.sites}件`)
+    if (data.workers != null) parts.push(`作業者 ${data.workers}件`)
+    toast.success(`取込完了: ${parts.join('、')}`)
+  }
+  qc.invalidateQueries({ queryKey: ['workers'] })
+  qc.invalidateQueries({ queryKey: ['sites'] })
+}
+
 export default function MastersPage() {
   const qc = useQueryClient()
 
@@ -42,18 +55,28 @@ export default function MastersPage() {
     queryFn: () => fetch('/api/workers').then(r => r.json()),
   })
 
-  const pullMasters = useMutation({
+  const pullAll = useMutation({
     mutationFn: () =>
       fetch('/api/sync/pull/masters', { method: 'POST' }).then(r => r.json()),
-    onSuccess: data => {
-      toast.success(
-        `取込完了: 現場 ${data.sites?.upserted ?? 0}件、作業者 ${data.workers?.upserted ?? 0}件`
-      )
-      qc.invalidateQueries({ queryKey: ['workers'] })
-      qc.invalidateQueries({ queryKey: ['sites'] })
-    },
+    onSuccess: data => onPullSuccess(data, qc),
     onError: () => toast.error('取込に失敗しました'),
   })
+
+  const pullEmployees = useMutation({
+    mutationFn: () =>
+      fetch('/api/sync/pull/masters?target=employee', { method: 'POST' }).then(r => r.json()),
+    onSuccess: data => onPullSuccess(data, qc),
+    onError: () => toast.error('取込に失敗しました'),
+  })
+
+  const pullPartners = useMutation({
+    mutationFn: () =>
+      fetch('/api/sync/pull/masters?target=partner', { method: 'POST' }).then(r => r.json()),
+    onSuccess: data => onPullSuccess(data, qc),
+    onError: () => toast.error('取込に失敗しました'),
+  })
+
+  const anyPending = pullAll.isPending || pullEmployees.isPending || pullPartners.isPending
 
   const employees = workers.filter(w => w.source_kind === 'employee')
   const partners = workers.filter(w => w.source_kind === 'partner')
@@ -63,11 +86,11 @@ export default function MastersPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">マスタ管理</h1>
         <button
-          onClick={() => pullMasters.mutate()}
-          disabled={pullMasters.isPending}
+          onClick={() => pullAll.mutate()}
+          disabled={anyPending}
           className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
         >
-          {pullMasters.isPending ? '取込中...' : 'CBOから取込'}
+          {pullAll.isPending ? '取込中...' : '全て取込'}
         </button>
       </div>
 
@@ -79,15 +102,33 @@ export default function MastersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section>
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">
-            社員（{employees.length}名）
-          </h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-700">
+              社員（{employees.length}名）
+            </h2>
+            <button
+              onClick={() => pullEmployees.mutate()}
+              disabled={anyPending}
+              className="text-xs px-2 py-1 border border-green-300 text-green-700 rounded hover:bg-green-50 disabled:opacity-50"
+            >
+              {pullEmployees.isPending ? '取込中...' : 'CBOから取込'}
+            </button>
+          </div>
           <WorkerTable workers={employees} />
         </section>
         <section>
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">
-            協力会社スタッフ（{partners.length}名）
-          </h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-700">
+              協力会社スタッフ（{partners.length}名）
+            </h2>
+            <button
+              onClick={() => pullPartners.mutate()}
+              disabled={anyPending}
+              className="text-xs px-2 py-1 border border-green-300 text-green-700 rounded hover:bg-green-50 disabled:opacity-50"
+            >
+              {pullPartners.isPending ? '取込中...' : 'CBOから取込'}
+            </button>
+          </div>
           <WorkerTable workers={partners} />
         </section>
       </div>

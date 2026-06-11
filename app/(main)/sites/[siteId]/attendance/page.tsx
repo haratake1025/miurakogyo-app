@@ -24,10 +24,13 @@ export default function AttendancePage({
   })
 
   const reportsKey = ['site', siteId, 'reports', month]
-  const { data: reports = [], isLoading } = useQuery<ReportRow[]>({
+  const { data: reports = [], isLoading, isError } = useQuery<ReportRow[]>({
     queryKey: reportsKey,
-    queryFn: () =>
-      fetch(`/api/sites/${siteId}/reports?month=${month}`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/sites/${siteId}/reports?month=${month}`)
+      if (!r.ok) throw new Error(await r.text())
+      return r.json()
+    },
   })
 
   const unsyncedCount = reports.filter(
@@ -99,6 +102,10 @@ export default function AttendancePage({
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
           読み込み中...
+        </div>
+      ) : isError ? (
+        <div className="flex-1 flex items-center justify-center text-red-400 text-sm">
+          データの取得に失敗しました
         </div>
       ) : (
         <AttendanceGrid

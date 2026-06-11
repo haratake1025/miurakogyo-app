@@ -15,8 +15,9 @@ export async function GET(
     return NextResponse.json({ error: 'month パラメータが必要です (YYYY-MM)' }, { status: 400 })
   }
 
+  const [y, m] = month.split('-')
   const from = `${month}-01`
-  const to = `${month}-31`
+  const to = new Date(Number(y), Number(m), 0).toISOString().slice(0, 10)
 
   const supabase = createServerClient()
   const { data, error } = await supabase
