@@ -190,13 +190,17 @@ function extractStaff(tree: TreeNode, supplierId: string, companyName: string): 
 }
 
 export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
-  // viewId は三浦興業環境固有。env 未設定時は確認済みの値をフォールバック
   const viewId = process.env.CBO_SUPPLIER_VIEW_ID ?? '2744'
   const res = await cboFetch<{ data: SupplierEntry[] | SupplierEntry }>(
     `/supplier_custom_views/${viewId}/suppliers?per_page=100`
   )
 
   const suppliers: SupplierEntry[] = Array.isArray(res.data) ? res.data : [res.data]
+
+  // デバッグ用: 最初の1社の生データをコンソールに出力
+  if (suppliers[0]) {
+    console.log('[cbo-debug] first supplier raw:', JSON.stringify(suppliers[0]).slice(0, 3000))
+  }
 
   const workers: CboPartnerWorker[] = []
   for (const supplier of suppliers) {
