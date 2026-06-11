@@ -84,19 +84,17 @@ export async function listSites(): Promise<CboSite[]> {
 }
 
 // ===== 社員一覧 =====
-// TODO(T2.0): レスポンス構造を疎通確認で確定
+// 実レスポンス: { data: [{ id, full_name, full_name_kana, tel, withdrawn_at, ... }] }
 
 export async function listEmployees(): Promise<CboEmployee[]> {
-  // /users で全取得し、退職・削除済みをクライアント側で除外
   const res = await cboFetch<{ data: Array<Record<string, unknown>> }>('/users')
 
   return res.data
     .filter((u) => !u['is_withdrawed'] && !u['withdrawn_at'] && !u['deleted_at'])
     .map((u) => ({
       cboCompanyUserId: String(u['id']),
-      workerName:
-        [u['last_name'], u['first_name']].filter(Boolean).join('') || String(u['name'] ?? ''),
-      nameKana: str(u['last_name_kana'] ?? u['name_kana']),
+      workerName: String(u['full_name'] ?? ''),
+      nameKana: str(u['full_name_kana']),
       tel: str(u['tel']),
     }))
 }
@@ -149,24 +147,46 @@ function extractStaff(tree: TreeNode, supplierId: string, companyName: string): 
   const staffNode = findNode(staffInfoNode, 'staff')
   if (!staffNode) return []
 
+  const staffInstances = staffNode.value ?? []
+  if (staffInstances.length === 0) return []
+
+  // staff → staff_name（中間ボックス）→ staff_last_name/staff_first_name の2段階構造
+  // staff_name.value[i].parent_id = staff instance id
+  // staff_name.value[i].id       = staff_name value id
+  // staff_last_name.value[i].parent_id = staff_name value id
+  const staffNameNode = findNode(staffNode, 'staff_name')
+  const instToNameId = new Map<number, number>()
+  for (const v of staffNameNode?.value ?? []) {
+    if (v.parent_id !== null) instToNameId.set(v.parent_id, v.id)
+  }
+
   const lastNameNode = findNode(staffNode, 'staff_last_name')
   const firstNameNode = findNode(staffNode, 'staff_first_name')
 
   const lastNames = new Map(
-    (lastNameNode?.value ?? []).map((v) => [v.parent_id, String(v.value ?? '')])
+    (lastNameNode?.value ?? [])
+      .filter(v => v.parent_id !== null)
+      .map(v => [v.parent_id as number, String(v.value ?? '')])
   )
   const firstNames = new Map(
-    (firstNameNode?.value ?? []).map((v) => [v.parent_id, String(v.value ?? '')])
+    (firstNameNode?.value ?? [])
+      .filter(v => v.parent_id !== null)
+      .map(v => [v.parent_id as number, String(v.value ?? '')])
   )
 
-  return (staffNode.value ?? [])
-    .map((inst) => ({
-      cboSupplierId: supplierId,
-      cboSupplierStaffId: String(inst.id),
-      companyName,
-      workerName: [lastNames.get(inst.id), firstNames.get(inst.id)].filter(Boolean).join(''),
-    }))
-    .filter((w) => w.workerName !== '')
+  return staffInstances
+    .map(inst => {
+      const nameId = instToNameId.get(inst.id)
+      const lastName = nameId !== undefined ? (lastNames.get(nameId) ?? '') : ''
+      const firstName = nameId !== undefined ? (firstNames.get(nameId) ?? '') : ''
+      return {
+        cboSupplierId: supplierId,
+        cboSupplierStaffId: String(inst.id),
+        companyName,
+        workerName: [lastName, firstName].filter(Boolean).join(''),
+      }
+    })
+    .filter(w => w.workerName !== '')
 }
 
 export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
