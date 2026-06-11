@@ -61,19 +61,18 @@ type CreateResponse = Record<string, unknown>
 
 export async function createAttendanceReport(
   payload: CboReportPayload
-): Promise<{ cboReportId: string }> {
+): Promise<{ cboReportId: string; rawResponse: Record<string, unknown> }> {
   const res = await cboFetch<CreateResponse>('/personal_daily_report', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 
-  // TODO(T2.0): 実APIのレスポンス確認後にフィールド名を確定する
   const id = res['id'] ?? res['report_id'] ?? res['personal_daily_report_id']
   if (!id) {
     throw new Error(`CBO create response に report_id が見つかりません: ${JSON.stringify(res)}`)
   }
 
-  return { cboReportId: String(id) }
+  return { cboReportId: String(id), rawResponse: res }
 }
 
 export async function updateAttendanceReport(

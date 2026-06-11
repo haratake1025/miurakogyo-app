@@ -79,9 +79,11 @@ export async function POST(req: NextRequest) {
 
       let cboReportId = report.cbo_report_id
 
+      let cboRawResponse: Record<string, unknown> = {}
       if (report.sync_status === 'local_new') {
         const res = await createAttendanceReport(payload)
         cboReportId = res.cboReportId
+        cboRawResponse = res.rawResponse
       } else {
         await updateAttendanceReport(cboReportId!, payload)
       }
@@ -102,6 +104,7 @@ export async function POST(req: NextRequest) {
         record_id: report.id, cbo_report_id: cboReportId,
         status: 'success',
         message: report.sync_status === 'local_new' ? '新規作成' : '更新',
+        payload_snapshot: { sent: payload, received: cboRawResponse },
         performed_by: user.id, performed_at: pushedAt,
       })
 
