@@ -63,9 +63,9 @@ function num(v: unknown): number {
 // asbests は values 内の key。null = 石綿でない → アプリ側でフィルタ
 
 export async function listSites(): Promise<CboSite[]> {
-  // TODO(T2.0): order_format_id クエリが効くか要確認。カスタムビュー経由が必要な場合は別途対応
+  const viewId = process.env.CBO_ORDER_VIEW_ID ?? '8440'
   const res = await cboFetch<{ data: Array<{ id: number; values: CboValue[] }> }>(
-    '/orders?order_format_id=2556'
+    `/order_custom_views/${viewId}/orders`
   )
 
   return res.data
@@ -87,10 +87,12 @@ export async function listSites(): Promise<CboSite[]> {
 // TODO(T2.0): レスポンス構造を疎通確認で確定
 
 export async function listEmployees(): Promise<CboEmployee[]> {
-  const res = await cboFetch<{ data: Array<Record<string, unknown>> }>('/company_users')
+  // 実APIエンドポイントは /users?status[]=利用中 (/company_users は 404)
+  const res = await cboFetch<{ data: Array<Record<string, unknown>> }>(
+    '/users?status%5B%5D=%E5%88%A9%E7%94%A8%E4%B8%AD'
+  )
 
   return res.data
-    .filter((u) => !u['is_withdrawed'] && !u['withdrawn_at'] && !u['deleted_at'])
     .map((u) => ({
       cboCompanyUserId: String(u['id']),
       workerName:
