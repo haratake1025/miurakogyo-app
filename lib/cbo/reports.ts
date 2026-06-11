@@ -67,7 +67,9 @@ export async function createAttendanceReport(
     body: JSON.stringify(payload),
   })
 
-  const id = res['id'] ?? res['report_id'] ?? res['personal_daily_report_id']
+  // CBO returns { "data": { "id": 123, ... } }
+  const inner = (res['data'] ?? res) as Record<string, unknown>
+  const id = inner['id'] ?? inner['report_id'] ?? inner['personal_daily_report_id']
   if (!id) {
     throw new Error(`CBO create response に report_id が見つかりません: ${JSON.stringify(res)}`)
   }

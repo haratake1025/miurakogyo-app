@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         direction: 'push', target: 'report',
         record_id: report.id, cbo_report_id: report.cbo_report_id,
         status: 'error', message: msg,
-        payload_snapshot: report,
+        payload_snapshot: { sent: payload, report },
         performed_by: user.id, performed_at: pushedAt,
       })
       errors++
