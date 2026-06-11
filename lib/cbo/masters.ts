@@ -87,12 +87,11 @@ export async function listSites(): Promise<CboSite[]> {
 // TODO(T2.0): レスポンス構造を疎通確認で確定
 
 export async function listEmployees(): Promise<CboEmployee[]> {
-  // 実APIエンドポイントは /users?status[]=利用中 (/company_users は 404)
-  const res = await cboFetch<{ data: Array<Record<string, unknown>> }>(
-    '/users?status%5B%5D=%E5%88%A9%E7%94%A8%E4%B8%AD'
-  )
+  // /users で全取得し、退職・削除済みをクライアント側で除外
+  const res = await cboFetch<{ data: Array<Record<string, unknown>> }>('/users')
 
   return res.data
+    .filter((u) => !u['is_withdrawed'] && !u['withdrawn_at'] && !u['deleted_at'])
     .map((u) => ({
       cboCompanyUserId: String(u['id']),
       workerName:
