@@ -150,16 +150,8 @@ function extractStaff(tree: TreeNode, supplierId: string, companyName: string): 
   const staffInstances = staffNode.value ?? []
   if (staffInstances.length === 0) return []
 
-  // staff → staff_name（中間ボックス）→ staff_last_name/staff_first_name の2段階構造
-  // staff_name.value[i].parent_id = staff instance id
-  // staff_name.value[i].id       = staff_name value id
-  // staff_last_name.value[i].parent_id = staff_name value id
-  const staffNameNode = findNode(staffNode, 'staff_name')
-  const instToNameId = new Map<number, number>()
-  for (const v of staffNameNode?.value ?? []) {
-    if (v.parent_id !== null) instToNameId.set(v.parent_id, v.id)
-  }
-
+  // staff_name は flat タイプ（box ではない）なので中間 ID を持たない。
+  // staff_last_name / staff_first_name の parent_id は直接 staff インスタンスの ID を指す。
   const lastNameNode = findNode(staffNode, 'staff_last_name')
   const firstNameNode = findNode(staffNode, 'staff_first_name')
 
@@ -175,17 +167,12 @@ function extractStaff(tree: TreeNode, supplierId: string, companyName: string): 
   )
 
   return staffInstances
-    .map(inst => {
-      const nameId = instToNameId.get(inst.id)
-      const lastName = nameId !== undefined ? (lastNames.get(nameId) ?? '') : ''
-      const firstName = nameId !== undefined ? (firstNames.get(nameId) ?? '') : ''
-      return {
-        cboSupplierId: supplierId,
-        cboSupplierStaffId: String(inst.id),
-        companyName,
-        workerName: [lastName, firstName].filter(Boolean).join(''),
-      }
-    })
+    .map(inst => ({
+      cboSupplierId: supplierId,
+      cboSupplierStaffId: String(inst.id),
+      companyName,
+      workerName: [lastNames.get(inst.id) ?? '', firstNames.get(inst.id) ?? ''].filter(Boolean).join(''),
+    }))
     .filter(w => w.workerName !== '')
 }
 
