@@ -44,10 +44,15 @@ export async function POST(req: NextRequest) {
     const worker = report.worker as Record<string, unknown>
     if (!worker) continue
 
-    // reporter_cbo_user_id が未設定の場合はスキップ（T2.0疎通確認後に要件確認）
-    const reporterId = report.reporter_cbo_user_id
+    const reporterId = report.reporter_cbo_user_id ?? process.env.CBO_DEFAULT_REPORTER_ID
     if (!reporterId) {
       errors++
+      await supabase.from('sync_logs').insert({
+        direction: 'push', target: 'report',
+        record_id: report.id, cbo_report_id: null,
+        status: 'error', message: 'reporter_cbo_user_id 未設定 — CBO_DEFAULT_REPORTER_ID を設定してください',
+        performed_by: user.id, performed_at: pushedAt,
+      })
       continue
     }
 
