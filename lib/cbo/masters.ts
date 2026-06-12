@@ -101,7 +101,7 @@ export async function listEmployees(): Promise<CboEmployee[]> {
 
 // ===== 協力会社＋担当者一覧 =====
 // 一覧: GET /supplier_custom_views/{viewId}/suppliers → format_id=5307 の ID を収集
-// 詳細: GET /supplier_custom_views/{viewId}/suppliers/{id} → tree 構造でスタッフ個別 ID 取得
+// 詳細: GET /supplier_trees/{id}?evaluate_expression=0 → tree 構造でスタッフ個別 ID 取得
 // tree.children: general_information > name (社名)
 //                staff_information > staff (repeatable box) > staff_name > staff_last_name / staff_first_name
 // cbo_supplier_id = 一覧の supplier.id (319097)
@@ -158,11 +158,10 @@ export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
 
   for (const supplierId of supplierIds) {
     const detail = await cboFetch<{
-      id: number
-      tree: TreeNode
-    }>(`/supplier_custom_views/${viewId}/suppliers/${supplierId}`)
+      data: { id: number; tree: TreeNode }
+    }>(`/supplier_trees/${supplierId}?evaluate_expression=0`)
 
-    const tree = detail.tree
+    const tree = detail.data?.tree
     if (!tree) continue
 
     // 社名
