@@ -110,6 +110,8 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
 
   // hasDragged: true once the mouse moves to a different cell during a drag
   const hasDraggedRef = useRef(false)
+  // lastClicked: tracks previous single-click cell; second click on same cell opens editor
+  const lastClickedRef = useRef<{ wIdx: number; dIdx: number } | null>(null)
 
   // Always-current snapshot for the stable keydown handler
   const stateRef = useRef({
@@ -171,7 +173,16 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
       }
 
       if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
-        setShowBulkEdit(true)
+        const { minW, maxW, minD, maxD } = selectionRange(selection)
+        if (minW === maxW && minD === maxD) {
+          // Single cell → open CellEditor
+          const worker = allWorkers[minW]
+          const day = days[minD]
+          setEditing({ workerId: worker.id, date: day, report: reportMap.get(`${worker.id}_${day}`) ?? null })
+          setSelection(null)
+        } else {
+          setShowBulkEdit(true)
+        }
         e.preventDefault()
         return
       }
@@ -234,6 +245,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
       // Extend selection from existing anchor
       setSelection({ anchor: selection.anchor, active: { wIdx, dIdx } })
       hasDraggedRef.current = true
+      lastClickedRef.current = null
       return
     }
 
@@ -251,10 +263,17 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
 
   function handleCellMouseUp(wIdx: number, dIdx: number, worker: WorkerSummary, day: string) {
     if (!hasDraggedRef.current) {
-      // Pure click — open single cell editor
-      const report = reportMap.get(`${worker.id}_${day}`) ?? null
-      setEditing({ workerId: worker.id, date: day, report })
-      setSelection(null)
+      const last = lastClickedRef.current
+      if (last && last.wIdx === wIdx && last.dIdx === dIdx) {
+        // Second click on same cell → open editor
+        const report = reportMap.get(`${worker.id}_${day}`) ?? null
+        setEditing({ workerId: worker.id, date: day, report })
+        setSelection(null)
+        lastClickedRef.current = null
+      } else {
+        // First click → select only (enables copy/bulk-edit from toolbar)
+        lastClickedRef.current = { wIdx, dIdx }
+      }
     }
     setIsDragging(false)
   }
