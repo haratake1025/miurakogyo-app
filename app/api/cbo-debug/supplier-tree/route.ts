@@ -11,23 +11,20 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supplierId = 319097
-  const formatId = 5307
+  const viewId = process.env.CBO_SUPPLIER_VIEW_ID ?? '3107'
 
-  const [r1, r2, r3, r4, r5, r6] = await Promise.all([
-    tryFetch(`/suppliers/${supplierId}`),
-    tryFetch(`/suppliers/${supplierId}/tree_and_value`),
-    tryFetch(`/supplier_formats/${formatId}/suppliers/${supplierId}`),
-    tryFetch(`/supplier_custom_views/3107/suppliers?id_in[]=${supplierId}`),
-    tryFetch(`/suppliers?id_in[]=${supplierId}&supplier_format_id=${formatId}`),
-    tryFetch(`/supplier_custom_views/2744/suppliers/${supplierId}`),
+  const [r1, r2, r3, r4] = await Promise.all([
+    tryFetch(`/supplier_custom_views/${viewId}/suppliers/${supplierId}/tree_and_value`),
+    tryFetch(`/supplier_custom_views/${viewId}/suppliers?id=${supplierId}`),
+    tryFetch(`/suppliers/${supplierId}?with_tree=true`),
+    // id_in[] with tree flag
+    tryFetch(`/supplier_custom_views/${viewId}/suppliers?id_in[]=${supplierId}&tree=true`),
   ])
 
   return NextResponse.json({
-    '/suppliers/:id': r1,
-    '/suppliers/:id/tree_and_value': r2,
-    '/supplier_formats/:fid/suppliers/:id': r3,
-    '/supplier_custom_views/3107/suppliers?id_in[]=': r4,
-    '/suppliers?id_in[]&supplier_format_id=': r5,
-    '/supplier_custom_views/2744/suppliers/:id': r6,
+    '/supplier_custom_views/viewId/suppliers/:id/tree_and_value': r1,
+    '/supplier_custom_views/viewId/suppliers?id=': r2,
+    '/suppliers/:id?with_tree=true': r3,
+    '/supplier_custom_views/viewId/suppliers?id_in[]&tree=true': r4,
   })
 }
