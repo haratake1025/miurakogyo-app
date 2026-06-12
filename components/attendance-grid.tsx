@@ -204,27 +204,48 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
       }
 
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard) {
-        const { minW: startW, minD: startD } = selectionRange(selection)
+        const { minW: startW, minD: startD, maxW: endW, maxD: endD } = selectionRange(selection)
+        const isSingleCell = clipboard.rows === 1 && clipboard.cols === 1
+        const singleSrc = isSingleCell ? clipboard.grid[0]?.[0] : null
         const cells: BulkCellPayload[] = []
-        for (let ri = 0; ri < clipboard.rows; ri++) {
-          for (let ci = 0; ci < clipboard.cols; ci++) {
-            const wIdx = startW + ri
-            const dIdx = startD + ci
-            if (wIdx >= allWorkers.length || dIdx >= days.length) continue
-            const src = clipboard.grid[ri]?.[ci]
-            if (!src) continue
-            const worker = allWorkers[wIdx]
-            const day = days[dIdx]
-            const existing = reportMap.get(`${worker.id}_${day}`)
-            cells.push({
-              worker_id: worker.id,
-              work_date: day,
-              day_yakan_id: src.day_yakan_id,
-              over_hour: src.over_hour,
-              work_content_id: src.work_content_id,
-              health_type_id: src.health_type_id,
-              existing_id: existing?.id,
-            })
+        if (isSingleCell && singleSrc) {
+          // 1セルコピー → 選択範囲全体に展開
+          for (let wIdx = startW; wIdx <= endW; wIdx++) {
+            for (let dIdx = startD; dIdx <= endD; dIdx++) {
+              const worker = allWorkers[wIdx]
+              const day = days[dIdx]
+              cells.push({
+                worker_id: worker.id,
+                work_date: day,
+                day_yakan_id: singleSrc.day_yakan_id,
+                over_hour: singleSrc.over_hour,
+                work_content_id: singleSrc.work_content_id,
+                health_type_id: singleSrc.health_type_id,
+                existing_id: reportMap.get(`${worker.id}_${day}`)?.id,
+              })
+            }
+          }
+        } else {
+          // 複数セルコピー → 左上から貼り付け
+          for (let ri = 0; ri < clipboard.rows; ri++) {
+            for (let ci = 0; ci < clipboard.cols; ci++) {
+              const wIdx = startW + ri
+              const dIdx = startD + ci
+              if (wIdx >= allWorkers.length || dIdx >= days.length) continue
+              const src = clipboard.grid[ri]?.[ci]
+              if (!src) continue
+              const worker = allWorkers[wIdx]
+              const day = days[dIdx]
+              cells.push({
+                worker_id: worker.id,
+                work_date: day,
+                day_yakan_id: src.day_yakan_id,
+                over_hour: src.over_hour,
+                work_content_id: src.work_content_id,
+                health_type_id: src.health_type_id,
+                existing_id: reportMap.get(`${worker.id}_${day}`)?.id,
+              })
+            }
           }
         }
         if (cells.length > 0) pasteMutateRef.current?.(cells)
@@ -295,27 +316,48 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
 
   function handlePasteToolbar() {
     if (!selection || !clipboard) return
-    const { minW: startW, minD: startD } = selectionRange(selection)
+    const { minW: startW, minD: startD, maxW: endW, maxD: endD } = selectionRange(selection)
+    const isSingleCell = clipboard.rows === 1 && clipboard.cols === 1
+    const singleSrc = isSingleCell ? clipboard.grid[0]?.[0] : null
     const cells: BulkCellPayload[] = []
-    for (let ri = 0; ri < clipboard.rows; ri++) {
-      for (let ci = 0; ci < clipboard.cols; ci++) {
-        const wIdx = startW + ri
-        const dIdx = startD + ci
-        if (wIdx >= allWorkers.length || dIdx >= days.length) continue
-        const src = clipboard.grid[ri]?.[ci]
-        if (!src) continue
-        const worker = allWorkers[wIdx]
-        const day = days[dIdx]
-        const existing = reportMap.get(`${worker.id}_${day}`)
-        cells.push({
-          worker_id: worker.id,
-          work_date: day,
-          day_yakan_id: src.day_yakan_id,
-          over_hour: src.over_hour,
-          work_content_id: src.work_content_id,
-          health_type_id: src.health_type_id,
-          existing_id: existing?.id,
-        })
+    if (isSingleCell && singleSrc) {
+      // 1セルコピー → 選択範囲全体に展開
+      for (let wIdx = startW; wIdx <= endW; wIdx++) {
+        for (let dIdx = startD; dIdx <= endD; dIdx++) {
+          const worker = allWorkers[wIdx]
+          const day = days[dIdx]
+          cells.push({
+            worker_id: worker.id,
+            work_date: day,
+            day_yakan_id: singleSrc.day_yakan_id,
+            over_hour: singleSrc.over_hour,
+            work_content_id: singleSrc.work_content_id,
+            health_type_id: singleSrc.health_type_id,
+            existing_id: reportMap.get(`${worker.id}_${day}`)?.id,
+          })
+        }
+      }
+    } else {
+      // 複数セルコピー → 左上から貼り付け
+      for (let ri = 0; ri < clipboard.rows; ri++) {
+        for (let ci = 0; ci < clipboard.cols; ci++) {
+          const wIdx = startW + ri
+          const dIdx = startD + ci
+          if (wIdx >= allWorkers.length || dIdx >= days.length) continue
+          const src = clipboard.grid[ri]?.[ci]
+          if (!src) continue
+          const worker = allWorkers[wIdx]
+          const day = days[dIdx]
+          cells.push({
+            worker_id: worker.id,
+            work_date: day,
+            day_yakan_id: src.day_yakan_id,
+            over_hour: src.over_hour,
+            work_content_id: src.work_content_id,
+            health_type_id: src.health_type_id,
+            existing_id: reportMap.get(`${worker.id}_${day}`)?.id,
+          })
+        }
       }
     }
     if (cells.length > 0) pasteMutation.mutate(cells)
