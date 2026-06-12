@@ -99,122 +99,25 @@ export async function listEmployees(): Promise<CboEmployee[]> {
     }))
 }
 
-// ===== 協力会社＋スタッフ一覧 =====
-// 実レスポンス: { data: [{id, tree: {key, value, children}}] }
-// tree は CBO のフォームスキーマ＋値が入れ子構造。staff_information > staff にスタッフが repeatable で入る。
-// T2.0疎通確認済み: URL は supplier_custom_views/{viewId}/suppliers
-
-// ---- 内部型 ----
-
-type TreeVal = {
-  id: number
-  parent_id: number | null
-  key: string
-  value: unknown
-}
-
-type TreeNode = {
-  id: number
-  key: string
-  type: string
-  value: TreeVal[]
-  children?: TreeNode[]
-}
-
-type SupplierEntry = {
-  id: number
-  tree: TreeNode
-}
-
-function findNode(node: TreeNode, key: string): TreeNode | null {
-  if (node.key === key) return node
-  for (const child of node.children ?? []) {
-    const found = findNode(child, key)
-    if (found) return found
-  }
-  return null
-}
-
-function treeLeafVal(node: TreeNode, key: string): unknown {
-  const n = findNode(node, key)
-  return n?.value?.[0]?.value ?? null
-}
-
-function extractStaff(tree: TreeNode, supplierId: string, companyName: string): CboPartnerWorker[] {
-  const staffInfoNode = findNode(tree, 'staff_information')
-  if (!staffInfoNode) return []
-
-  const staffNode = findNode(staffInfoNode, 'staff')
-  if (!staffNode) return []
-
-  const staffInstances = staffNode.value ?? []
-  if (staffInstances.length === 0) return []
-
-  // staff → staff_name（中間ボックス）→ staff_last_name/staff_first_name の2段階構造
-  // staff_name.value[i].parent_id = staff instance id
-  // staff_name.value[i].id       = staff_name value id
-  // staff_last_name.value[i].parent_id = staff_name value id
-  const staffNameNode = findNode(staffNode, 'staff_name')
-  const instToNameId = new Map<number, number>()
-  for (const v of staffNameNode?.value ?? []) {
-    if (v.parent_id !== null) instToNameId.set(v.parent_id, v.id)
-  }
-
-  const lastNameNode = findNode(staffNode, 'staff_last_name')
-  const firstNameNode = findNode(staffNode, 'staff_first_name')
-
-  const lastNames = new Map(
-    (lastNameNode?.value ?? [])
-      .filter(v => v.parent_id !== null)
-      .map(v => [v.parent_id as number, String(v.value ?? '')])
-  )
-  const firstNames = new Map(
-    (firstNameNode?.value ?? [])
-      .filter(v => v.parent_id !== null)
-      .map(v => [v.parent_id as number, String(v.value ?? '')])
-  )
-
-  return staffInstances
-    .map(inst => {
-      const nameId = instToNameId.get(inst.id)
-      const lastName = nameId !== undefined ? (lastNames.get(nameId) ?? '') : ''
-      const firstName = nameId !== undefined ? (firstNames.get(nameId) ?? '') : ''
-      return {
-        cboSupplierId: supplierId,
-        cboSupplierStaffId: String(inst.id),
-        companyName,
-        workerName: [lastName, firstName].filter(Boolean).join(''),
-      }
-    })
-    .filter(w => w.workerName !== '')
-}
+// ===== 協力会社一覧 =====
+// 実レスポンス: GET /suppliers?supplier_format_id=5307
+// { data: [{ id, name, is_recipient_orders, is_recipient_billings }] }
+// 現時点は会社名のみ取込。スタッフ取得APIは別途確認予定。
 
 export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
-  const viewId = process.env.CBO_SUPPLIER_VIEW_ID ?? '2744'
-  const res = await cboFetch<{ data: SupplierEntry[] | SupplierEntry }>(
-    `/supplier_custom_views/${viewId}/suppliers?per_page=100`
+  const res = await cboFetch<{ data: Array<{ id: number; name: string }> }>(
+    `/suppliers?supplier_format_id=5307`
   )
-
-  const suppliers: SupplierEntry[] = Array.isArray(res.data) ? res.data : [res.data]
-
-  // デバッグ用: 最初の1社の生データをコンソールに出力
-  if (suppliers[0]) {
-    console.log('[cbo-debug] first supplier raw:', JSON.stringify(suppliers[0]).slice(0, 3000))
-  }
-
-  const workers: CboPartnerWorker[] = []
-  for (const supplier of suppliers) {
-    if (!supplier?.tree) continue
-    const name = String(treeLeafVal(supplier.tree, 'name') ?? supplier.id)
-    workers.push(...extractStaff(supplier.tree, String(supplier.id), name))
-  }
-  return workers
+  return (res.data ?? []).map(s => ({
+    cboSupplierId: String(s.id),
+    cboSupplierStaffId: '',
+    companyName: s.name,
+    workerName: s.name,
+  }))
 }
 
 // ===== 出面一覧 =====
 // 実レスポンス: { data: [{ id, company_user_id, values: [{key, value, label}] }] }
-// TODO(T2.0): 直接エンドポイント vs カスタムビューエンドポイント要確認
-// TODO(T2.0): order_id クエリ名・日付範囲パラメータ名を確認
 
 export async function listAttendanceReports(
   orderId: string,
@@ -243,8 +146,6 @@ export async function getAttendanceReport(reportId: string): Promise<CboReport> 
 }
 
 // ===== 内部: 出面レスポンス正規化 =====
-// company_user_id (top-level) = 自社員ワーカーID
-// sup_name / sup_staff (values 内) = 外注ワーカーID
 
 function normalizeReport(r: {
   id: number
