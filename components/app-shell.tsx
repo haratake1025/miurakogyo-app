@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { createBrowserClient } from '@/lib/supabase/client'
+import { usePathname } from 'next/navigation'
 
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname()
@@ -22,15 +21,6 @@ function NavItem({ href, label }: { href: string; label: string }) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-
-  async function handleLogout() {
-    const supabase = createBrowserClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
-
   return (
     <div className="flex h-screen overflow-hidden">
       <aside className="w-52 bg-gray-900 flex flex-col shrink-0">
@@ -43,14 +33,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavItem href="/masters" label="マスタ管理" />
           <NavItem href="/sync" label="同期・ログ" />
         </nav>
-        <div className="p-3 border-t border-gray-700">
-          <button
-            onClick={handleLogout}
-            className="text-xs text-gray-400 hover:text-white transition-colors"
-          >
-            ログアウト
-          </button>
-        </div>
       </aside>
       <div className="flex-1 flex flex-col overflow-hidden">
         {children}
