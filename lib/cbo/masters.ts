@@ -99,21 +99,53 @@ export async function listEmployees(): Promise<CboEmployee[]> {
     }))
 }
 
-// ===== 協力会社一覧 =====
-// 実レスポンス: GET /suppliers?supplier_format_id=5307
-// { data: [{ id, name, is_recipient_orders, is_recipient_billings }] }
-// 現時点は会社名のみ取込。スタッフ取得APIは別途確認予定。
+// ===== 協力会社＋担当者一覧 =====
+// 実レスポンス: GET /supplier_custom_views/3107/suppliers
+// { data: [{ format_id, id, values: [{key,value}] }], meta: { last_page } }
+// format_id=5307 のみ対象。staff_name は \n 区切りで複数名入る → 1名1行に展開
 
 export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
-  const res = await cboFetch<{ data: Array<{ id: number; name: string }> }>(
-    `/suppliers?supplier_format_id=5307`
-  )
-  return (res.data ?? []).map(s => ({
-    cboSupplierId: String(s.id),
-    cboSupplierStaffId: '',
-    companyName: s.name,
-    workerName: s.name,
-  }))
+  const viewId = process.env.CBO_SUPPLIER_VIEW_ID ?? '3107'
+
+  type SupplierItem = { format_id: number; id: number; values: CboValue[] }
+  const all: SupplierItem[] = []
+  let page = 1
+  let lastPage = 1
+
+  do {
+    const res = await cboFetch<{
+      data: SupplierItem[]
+      meta: { last_page: number }
+    }>(`/supplier_custom_views/${viewId}/suppliers?per_page=100&page=${page}`)
+    all.push(...(res.data ?? []))
+    lastPage = res.meta?.last_page ?? 1
+    page++
+  } while (page <= lastPage)
+
+  const workers: CboPartnerWorker[] = []
+
+  for (const supplier of all) {
+    if (supplier.format_id !== 5307) continue
+
+    const companyName = String(extractVal(supplier.values, 'name') ?? '')
+    if (!companyName) continue
+
+    const staffRaw = extractVal(supplier.values, 'staff_name')
+    const staffNames = staffRaw
+      ? String(staffRaw).split('\n').map(s => s.trim()).filter(Boolean)
+      : []
+
+    for (const name of staffNames) {
+      workers.push({
+        cboSupplierId: String(supplier.id),
+        cboSupplierStaffId: name,
+        companyName,
+        workerName: name,
+      })
+    }
+  }
+
+  return workers
 }
 
 // ===== 出面一覧 =====
