@@ -21,7 +21,7 @@ export type BuildPayloadInput = {
 }
 
 type CboReportPayload = {
-  data: { root: [Record<string, unknown[]>] }
+  data: { root: [{ report_section: [Record<string, unknown[]>] }] }
   formatted: false
   personal_daily_report_format_id: 4879
   company_user_id: number
@@ -47,7 +47,7 @@ export function buildAttendancePayload(input: BuildPayloadInput): CboReportPaylo
   }
 
   return {
-    data: { root: [root] },
+    data: { root: [{ report_section: [root] }] },
     formatted: false,
     personal_daily_report_format_id: 4879,
     company_user_id: input.reporterId,
