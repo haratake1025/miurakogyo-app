@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/auth'
+import { deleteAttendanceReport } from '@/lib/cbo/reports'
 
 export async function PATCH(
   req: NextRequest,
@@ -73,14 +74,31 @@ export async function DELETE(
     return NextResponse.json({ error: '記録が見つかりません' }, { status: 404 })
   }
 
-  // sync_logs に必ず記録してから削除
+  // CBO同期済みの場合はCBO側も削除
+  if (existing.cbo_report_id) {
+    try {
+      await deleteAttendanceReport(existing.cbo_report_id)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      await supabase.from('sync_logs').insert({
+        direction: 'push', target: 'report',
+        record_id: id, cbo_report_id: existing.cbo_report_id,
+        status: 'error', message: `CBO削除失敗: ${msg}`,
+        payload_snapshot: existing,
+        performed_by: user.id,
+      })
+      return NextResponse.json({ error: `CBO削除に失敗しました: ${msg}` }, { status: 500 })
+    }
+  }
+
+  // sync_logs に記録してからDB削除
   await supabase.from('sync_logs').insert({
     direction: 'push',
     target: 'report',
     record_id: id,
     cbo_report_id: existing.cbo_report_id,
     status: 'success',
-    message: '削除',
+    message: existing.cbo_report_id ? 'CBO・ローカル両方削除' : 'ローカル削除（未同期）',
     payload_snapshot: existing,
     performed_by: user.id,
   })
