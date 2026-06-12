@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { ReportRow, WorkerSummary } from '@/types/frontend'
@@ -41,17 +41,6 @@ type BulkCellPayload = {
   existing_id?: string
 }
 
-function buildWorkerList(reports: ReportRow[]): WorkerSummary[] {
-  const map = new Map<string, WorkerSummary>()
-  for (const r of reports) {
-    if (!map.has(r.worker_id)) map.set(r.worker_id, r.worker)
-  }
-  return Array.from(map.values()).sort((a, b) => {
-    const c = a.company_name.localeCompare(b.company_name, 'ja')
-    return c !== 0 ? c : a.worker_name.localeCompare(b.worker_name, 'ja')
-  })
-}
-
 function selectionRange(sel: Selection) {
   return {
     minW: Math.min(sel.anchor.wIdx, sel.active.wIdx),
@@ -90,7 +79,7 @@ const STATUS_BADGE_COLOR: Record<string, string> = {
 
 export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }: Props) {
   const days = getDaysInMonth(month)
-  const workersFromReports = buildWorkerList(reports)
+
   const [extraWorkers, setExtraWorkers] = useState<Worker[]>([])
   const [editing, setEditing] = useState<EditTarget | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -99,18 +88,88 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   const [isDragging, setIsDragging] = useState(false)
   const [showBulkEdit, setShowBulkEdit] = useState(false)
 
+  // Worker order: maintained as an array of IDs (追加順、手動並び替え可)
+  const [workerOrder, setWorkerOrder] = useState<string[]>(() => {
+    const seen = new Set<string>()
+    const order: string[] = []
+    for (const r of reports) {
+      if (!seen.has(r.worker_id)) { seen.add(r.worker_id); order.push(r.worker_id) }
+    }
+    return order
+  })
+
+  // Sync workerOrder when reports refresh (append newly discovered workers)
+  useEffect(() => {
+    setWorkerOrder(prev => {
+      const existing = new Set(prev)
+      const toAdd: string[] = []
+      for (const r of reports) {
+        if (!existing.has(r.worker_id)) { existing.add(r.worker_id); toAdd.push(r.worker_id) }
+      }
+      return toAdd.length === 0 ? prev : [...prev, ...toAdd]
+    })
+  }, [reports])
+
+  // Map of all available workers (reports + manually added)
+  const allWorkerMap = useMemo(() => {
+    const map = new Map<string, WorkerSummary>()
+    for (const r of reports) {
+      if (!map.has(r.worker_id)) map.set(r.worker_id, r.worker)
+    }
+    for (const w of extraWorkers) {
+      if (!map.has(w.id)) map.set(w.id, w as unknown as WorkerSummary)
+    }
+    return map
+  }, [reports, extraWorkers])
+
+  // allWorkers in display order (workerOrder filters out stale IDs)
+  const allWorkers = workerOrder
+    .map(id => allWorkerMap.get(id))
+    .filter((w): w is WorkerSummary => w !== undefined)
+
   const reportMap = new Map(reports.map(r => [`${r.worker_id}_${r.work_date}`, r]))
-
-  const allWorkers: WorkerSummary[] = [
-    ...workersFromReports,
-    ...extraWorkers.filter(w => !workersFromReports.find(ew => ew.id === w.id)),
-  ]
-
   const excludeIds = allWorkers.map(w => w.id)
 
-  // hasDragged: true once the mouse moves to a different cell during a drag
+  // --- Drag & drop for row reorder ---
+  const [rowDragOverIdx, setRowDragOverIdx] = useState<number | null>(null)
+  const rowDragSrcIdxRef = useRef<number | null>(null)
+
+  function handleRowDragStart(wIdx: number, e: React.DragEvent) {
+    rowDragSrcIdxRef.current = wIdx
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function handleRowDragOver(wIdx: number, e: React.DragEvent) {
+    e.preventDefault()
+    if (rowDragSrcIdxRef.current !== null && rowDragSrcIdxRef.current !== wIdx) {
+      setRowDragOverIdx(wIdx)
+    }
+  }
+
+  function handleRowDrop(toIdx: number, e: React.DragEvent) {
+    e.preventDefault()
+    const fromIdx = rowDragSrcIdxRef.current
+    if (fromIdx === null || fromIdx === toIdx) {
+      setRowDragOverIdx(null)
+      return
+    }
+    setWorkerOrder(prev => {
+      const next = [...prev]
+      const [removed] = next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, removed)
+      return next
+    })
+    setRowDragOverIdx(null)
+    rowDragSrcIdxRef.current = null
+  }
+
+  function handleRowDragEnd() {
+    setRowDragOverIdx(null)
+    rowDragSrcIdxRef.current = null
+  }
+
+  // --- Cell selection helpers ---
   const hasDraggedRef = useRef(false)
-  // lastClicked: tracks previous single-click cell; second click on same cell opens editor
   const lastClickedRef = useRef<{ wIdx: number; dIdx: number } | null>(null)
 
   // Always-current snapshot for the stable keydown handler
@@ -150,7 +209,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   })
   pasteMutateRef.current = pasteMutation.mutate
 
-  // End drag on global mouseup (e.g. mouse released outside table)
+  // End cell-selection drag on global mouseup
   useEffect(() => {
     const up = () => setIsDragging(false)
     document.addEventListener('mouseup', up)
@@ -162,7 +221,6 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
     const handler = (e: KeyboardEvent) => {
       const { selection, clipboard, allWorkers, days, reportMap, editing, showBulkEdit } =
         stateRef.current
-      // Don't interfere when a modal is open
       if (editing || showBulkEdit) return
       if (!selection) return
 
@@ -175,7 +233,6 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
       if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
         const { minW, maxW, minD, maxD } = selectionRange(selection)
         if (minW === maxW && minD === maxD) {
-          // Single cell → open CellEditor
           const worker = allWorkers[minW]
           const day = days[minD]
           setEditing({ workerId: worker.id, date: day, report: reportMap.get(`${worker.id}_${day}`) ?? null })
@@ -209,24 +266,19 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
         const singleSrc = isSingleCell ? clipboard.grid[0]?.[0] : null
         const cells: BulkCellPayload[] = []
         if (isSingleCell && singleSrc) {
-          // 1セルコピー → 選択範囲全体に展開
           for (let wIdx = startW; wIdx <= endW; wIdx++) {
             for (let dIdx = startD; dIdx <= endD; dIdx++) {
               const worker = allWorkers[wIdx]
               const day = days[dIdx]
               cells.push({
-                worker_id: worker.id,
-                work_date: day,
-                day_yakan_id: singleSrc.day_yakan_id,
-                over_hour: singleSrc.over_hour,
-                work_content_id: singleSrc.work_content_id,
-                health_type_id: singleSrc.health_type_id,
+                worker_id: worker.id, work_date: day,
+                day_yakan_id: singleSrc.day_yakan_id, over_hour: singleSrc.over_hour,
+                work_content_id: singleSrc.work_content_id, health_type_id: singleSrc.health_type_id,
                 existing_id: reportMap.get(`${worker.id}_${day}`)?.id,
               })
             }
           }
         } else {
-          // 複数セルコピー → 左上から貼り付け
           for (let ri = 0; ri < clipboard.rows; ri++) {
             for (let ci = 0; ci < clipboard.cols; ci++) {
               const wIdx = startW + ri
@@ -237,12 +289,9 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
               const worker = allWorkers[wIdx]
               const day = days[dIdx]
               cells.push({
-                worker_id: worker.id,
-                work_date: day,
-                day_yakan_id: src.day_yakan_id,
-                over_hour: src.over_hour,
-                work_content_id: src.work_content_id,
-                health_type_id: src.health_type_id,
+                worker_id: worker.id, work_date: day,
+                day_yakan_id: src.day_yakan_id, over_hour: src.over_hour,
+                work_content_id: src.work_content_id, health_type_id: src.health_type_id,
                 existing_id: reportMap.get(`${worker.id}_${day}`)?.id,
               })
             }
@@ -263,7 +312,6 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
     hasDraggedRef.current = false
 
     if (e.shiftKey && selection) {
-      // Extend selection from existing anchor
       setSelection({ anchor: selection.anchor, active: { wIdx, dIdx } })
       hasDraggedRef.current = true
       lastClickedRef.current = null
@@ -286,13 +334,11 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
     if (!hasDraggedRef.current) {
       const last = lastClickedRef.current
       if (last && last.wIdx === wIdx && last.dIdx === dIdx) {
-        // Second click on same cell → open editor
         const report = reportMap.get(`${worker.id}_${day}`) ?? null
         setEditing({ workerId: worker.id, date: day, report })
         setSelection(null)
         lastClickedRef.current = null
       } else {
-        // First click → select only (enables copy/bulk-edit from toolbar)
         lastClickedRef.current = { wIdx, dIdx }
       }
     }
@@ -321,24 +367,19 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
     const singleSrc = isSingleCell ? clipboard.grid[0]?.[0] : null
     const cells: BulkCellPayload[] = []
     if (isSingleCell && singleSrc) {
-      // 1セルコピー → 選択範囲全体に展開
       for (let wIdx = startW; wIdx <= endW; wIdx++) {
         for (let dIdx = startD; dIdx <= endD; dIdx++) {
           const worker = allWorkers[wIdx]
           const day = days[dIdx]
           cells.push({
-            worker_id: worker.id,
-            work_date: day,
-            day_yakan_id: singleSrc.day_yakan_id,
-            over_hour: singleSrc.over_hour,
-            work_content_id: singleSrc.work_content_id,
-            health_type_id: singleSrc.health_type_id,
+            worker_id: worker.id, work_date: day,
+            day_yakan_id: singleSrc.day_yakan_id, over_hour: singleSrc.over_hour,
+            work_content_id: singleSrc.work_content_id, health_type_id: singleSrc.health_type_id,
             existing_id: reportMap.get(`${worker.id}_${day}`)?.id,
           })
         }
       }
     } else {
-      // 複数セルコピー → 左上から貼り付け
       for (let ri = 0; ri < clipboard.rows; ri++) {
         for (let ci = 0; ci < clipboard.cols; ci++) {
           const wIdx = startW + ri
@@ -349,12 +390,9 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
           const worker = allWorkers[wIdx]
           const day = days[dIdx]
           cells.push({
-            worker_id: worker.id,
-            work_date: day,
-            day_yakan_id: src.day_yakan_id,
-            over_hour: src.over_hour,
-            work_content_id: src.work_content_id,
-            health_type_id: src.health_type_id,
+            worker_id: worker.id, work_date: day,
+            day_yakan_id: src.day_yakan_id, over_hour: src.over_hour,
+            work_content_id: src.work_content_id, health_type_id: src.health_type_id,
             existing_id: reportMap.get(`${worker.id}_${day}`)?.id,
           })
         }
@@ -378,12 +416,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
           for (let di = minD; di <= maxD; di++) {
             const worker = allWorkers[wi]
             const day = days[di]
-            out.push({
-              workerId: worker.id,
-              workerName: worker.worker_name,
-              date: day,
-              report: reportMap.get(`${worker.id}_${day}`) ?? null,
-            })
+            out.push({ workerId: worker.id, workerName: worker.worker_name, date: day, report: reportMap.get(`${worker.id}_${day}`) ?? null })
           }
         }
         return out
@@ -474,10 +507,26 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
           </thead>
           <tbody>
             {allWorkers.map((worker, wIdx) => (
-              <tr key={worker.id} className="hover:bg-gray-50/50">
-                <td className="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-1.5 whitespace-nowrap">
-                  <div className="text-gray-400 text-xs leading-tight">{worker.company_name}</div>
-                  <div className="font-medium text-gray-900">{worker.worker_name}</div>
+              <tr
+                key={worker.id}
+                onDragOver={e => handleRowDragOver(wIdx, e)}
+                onDrop={e => handleRowDrop(wIdx, e)}
+                onDragEnd={handleRowDragEnd}
+                className={`hover:bg-gray-50/50 ${rowDragOverIdx === wIdx ? 'border-t-2 border-t-blue-500' : ''}`}
+              >
+                {/* Worker name cell — draggable handle for row reorder */}
+                <td
+                  draggable
+                  onDragStart={e => handleRowDragStart(wIdx, e)}
+                  className="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-1.5 whitespace-nowrap cursor-grab active:cursor-grabbing"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-300 text-xs select-none shrink-0" title="ドラッグで並び替え">⠿</span>
+                    <div className="min-w-0">
+                      <div className="text-gray-400 text-xs leading-tight">{worker.company_name}</div>
+                      <div className="font-medium text-gray-900">{worker.worker_name}</div>
+                    </div>
+                  </div>
                 </td>
                 {days.map((day, dIdx) => {
                   const report = reportMap.get(`${worker.id}_${day}`)
@@ -536,10 +585,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
           report={editing.report}
           isAsbestos={isAsbestos}
           onClose={() => setEditing(null)}
-          onSuccess={() => {
-            setEditing(null)
-            onRefresh()
-          }}
+          onSuccess={() => { setEditing(null); onRefresh() }}
         />
       )}
 
@@ -549,11 +595,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
           cells={bulkCells}
           isAsbestos={isAsbestos}
           onClose={() => setShowBulkEdit(false)}
-          onSuccess={() => {
-            setShowBulkEdit(false)
-            setSelection(null)
-            onRefresh()
-          }}
+          onSuccess={() => { setShowBulkEdit(false); setSelection(null); onRefresh() }}
         />
       )}
 
@@ -561,7 +603,12 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
         <AddWorkerModal
           excludeWorkerIds={excludeIds}
           onAdd={workers => {
+            const newIds = workers.map(w => w.id)
             setExtraWorkers(prev => [...prev, ...workers])
+            setWorkerOrder(prev => {
+              const existing = new Set(prev)
+              return [...prev, ...newIds.filter(id => !existing.has(id))]
+            })
             setShowAddModal(false)
           }}
           onClose={() => setShowAddModal(false)}
