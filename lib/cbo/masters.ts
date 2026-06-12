@@ -100,47 +100,100 @@ export async function listEmployees(): Promise<CboEmployee[]> {
 }
 
 // ===== 協力会社＋担当者一覧 =====
-// 実レスポンス: GET /supplier_custom_views/3107/suppliers
-// { data: [{ format_id, id, values: [{key,value}] }], meta: { last_page } }
-// format_id=5307 のみ対象。staff_name は \n 区切りで複数名入る → 1名1行に展開
+// 一覧: GET /supplier_custom_views/{viewId}/suppliers → format_id=5307 の ID を収集
+// 詳細: GET /supplier_custom_views/{viewId}/suppliers/{id} → tree 構造でスタッフ個別 ID 取得
+// tree.children: general_information > name (社名)
+//                staff_information > staff (repeatable box) > staff_name > staff_last_name / staff_first_name
+// cbo_supplier_id = 一覧の supplier.id (319097)
+// cbo_supplier_staff_id = staff.value[i].id (7994989, 7994992...)
+
+// ---- 内部型 ----
+
+type TreeVal = {
+  id: number
+  parent_id: number | null
+  key: string
+  value: unknown
+}
+
+type TreeNode = {
+  id: number
+  key: string
+  value: TreeVal[]
+  children?: TreeNode[]
+}
+
+function findTreeNode(node: TreeNode, key: string): TreeNode | null {
+  if (node.key === key) return node
+  for (const child of node.children ?? []) {
+    const found = findTreeNode(child, key)
+    if (found) return found
+  }
+  return null
+}
 
 export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
   const viewId = process.env.CBO_SUPPLIER_VIEW_ID ?? '3107'
 
-  type SupplierItem = { format_id: number; id: number; values: CboValue[] }
-  const all: SupplierItem[] = []
+  // 1. 一覧から format_id=5307 の supplier ID を収集
+  type SupplierListItem = { format_id: number; id: number }
+  const supplierIds: number[] = []
   let page = 1
   let lastPage = 1
 
   do {
     const res = await cboFetch<{
-      data: SupplierItem[]
+      data: SupplierListItem[]
       meta: { last_page: number }
     }>(`/supplier_custom_views/${viewId}/suppliers?per_page=100&page=${page}`)
-    all.push(...(res.data ?? []))
+    for (const s of res.data ?? []) {
+      if (s.format_id === 5307) supplierIds.push(s.id)
+    }
     lastPage = res.meta?.last_page ?? 1
     page++
   } while (page <= lastPage)
 
+  // 2. 各社の詳細 (tree) を取得してスタッフを展開
   const workers: CboPartnerWorker[] = []
 
-  for (const supplier of all) {
-    if (supplier.format_id !== 5307) continue
+  for (const supplierId of supplierIds) {
+    const detail = await cboFetch<{
+      id: number
+      tree: TreeNode
+    }>(`/supplier_custom_views/${viewId}/suppliers/${supplierId}`)
 
-    const companyName = String(extractVal(supplier.values, 'name') ?? '')
+    const tree = detail.tree
+    if (!tree) continue
+
+    // 社名
+    const nameNode = findTreeNode(tree, 'name')
+    const companyName = str(nameNode?.value?.[0]?.value)
     if (!companyName) continue
 
-    const staffRaw = extractVal(supplier.values, 'staff_name')
-    const staffNames = staffRaw
-      ? String(staffRaw).split('\n').map(s => s.trim()).filter(Boolean)
-      : []
+    // スタッフ instances
+    const staffNode = findTreeNode(tree, 'staff')
+    if (!staffNode?.value?.length) continue
 
-    for (const name of staffNames) {
+    const staffNameNode = findTreeNode(staffNode, 'staff_name')
+    const staffLastNode = findTreeNode(staffNode, 'staff_last_name')
+    const staffFirstNode = findTreeNode(staffNode, 'staff_first_name')
+
+    for (const staffInst of staffNode.value) {
+      const staffId = staffInst.id
+      // staff_name value に parent_id = staffId のものを探す
+      const snVal = staffNameNode?.value?.find((v) => v.parent_id === staffId)
+      if (!snVal) continue
+
+      const lastName = str(staffLastNode?.value?.find((v) => v.parent_id === snVal.id)?.value) ?? ''
+      const firstName = str(staffFirstNode?.value?.find((v) => v.parent_id === snVal.id)?.value) ?? ''
+      const workerName = `${lastName}${firstName}`.trim()
+      if (!workerName) continue
+
       workers.push({
-        cboSupplierId: String(supplier.id),
-        cboSupplierStaffId: name,
+        cboSupplierId: String(supplierId),
+        cboSupplierStaffId: String(staffId),
         companyName,
-        workerName: name,
+        workerName,
       })
     }
   }
