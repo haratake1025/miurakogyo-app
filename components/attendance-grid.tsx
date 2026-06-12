@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import type { ReportRow, WorkerSummary } from '@/types/frontend'
 import type { Worker } from '@/types/db'
 import { getDaysInMonth, getDayLabel, dayHeaderClass } from '@/lib/utils/date'
 import { CellEditor } from './cell-editor'
 import { AddWorkerModal } from './add-worker-modal'
+import { BulkEditModal, type BulkCell } from './bulk-edit-modal'
 
 type Props = {
   siteId: string
@@ -17,6 +20,27 @@ type Props = {
 
 type EditTarget = { workerId: string; date: string; report: ReportRow | null }
 
+type Selection = {
+  anchor: { wIdx: number; dIdx: number }
+  active: { wIdx: number; dIdx: number }
+}
+
+type ClipboardData = {
+  rows: number
+  cols: number
+  grid: (ReportRow | null)[][]
+}
+
+type BulkCellPayload = {
+  worker_id: string
+  work_date: string
+  day_yakan_id: string | null
+  over_hour: number
+  work_content_id: string | null
+  health_type_id: string | null
+  existing_id?: string
+}
+
 function buildWorkerList(reports: ReportRow[]): WorkerSummary[] {
   const map = new Map<string, WorkerSummary>()
   for (const r of reports) {
@@ -26,6 +50,21 @@ function buildWorkerList(reports: ReportRow[]): WorkerSummary[] {
     const c = a.company_name.localeCompare(b.company_name, 'ja')
     return c !== 0 ? c : a.worker_name.localeCompare(b.worker_name, 'ja')
   })
+}
+
+function selectionRange(sel: Selection) {
+  return {
+    minW: Math.min(sel.anchor.wIdx, sel.active.wIdx),
+    maxW: Math.max(sel.anchor.wIdx, sel.active.wIdx),
+    minD: Math.min(sel.anchor.dIdx, sel.active.dIdx),
+    maxD: Math.max(sel.anchor.dIdx, sel.active.dIdx),
+  }
+}
+
+function isCellSelected(wIdx: number, dIdx: number, sel: Selection | null): boolean {
+  if (!sel) return false
+  const { minW, maxW, minD, maxD } = selectionRange(sel)
+  return wIdx >= minW && wIdx <= maxW && dIdx >= minD && dIdx <= maxD
 }
 
 const STATUS_BORDER: Record<string, string> = {
@@ -55,6 +94,10 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   const [extraWorkers, setExtraWorkers] = useState<Worker[]>([])
   const [editing, setEditing] = useState<EditTarget | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [selection, setSelection] = useState<Selection | null>(null)
+  const [clipboard, setClipboard] = useState<ClipboardData | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [showBulkEdit, setShowBulkEdit] = useState(false)
 
   const reportMap = new Map(reports.map(r => [`${r.worker_id}_${r.work_date}`, r]))
 
@@ -65,25 +108,284 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
 
   const excludeIds = allWorkers.map(w => w.id)
 
+  // hasDragged: true once the mouse moves to a different cell during a drag
+  const hasDraggedRef = useRef(false)
+
+  // Always-current snapshot for the stable keydown handler
+  const stateRef = useRef({
+    selection: null as Selection | null,
+    clipboard: null as ClipboardData | null,
+    allWorkers: [] as WorkerSummary[],
+    days: [] as string[],
+    reportMap: new Map<string, ReportRow>(),
+    editing: null as EditTarget | null,
+    showBulkEdit: false,
+  })
+  stateRef.current = { selection, clipboard, allWorkers, days, reportMap, editing, showBulkEdit }
+
+  const pasteMutateRef = useRef<((cells: BulkCellPayload[]) => void) | null>(null)
+
+  const pasteMutation = useMutation({
+    mutationFn: async (cells: BulkCellPayload[]) => {
+      const res = await fetch('/api/reports/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ site_id: siteId, cells }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'エラー')
+      return data as { created: number; updated: number; errors: unknown[] }
+    },
+    onSuccess: (data) => {
+      const parts = [
+        data.created > 0 && `${data.created}件作成`,
+        data.updated > 0 && `${data.updated}件更新`,
+      ].filter(Boolean).join('・')
+      toast.success(`貼り付け完了：${parts || '0件'}`)
+      onRefresh()
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+  pasteMutateRef.current = pasteMutation.mutate
+
+  // End drag on global mouseup (e.g. mouse released outside table)
+  useEffect(() => {
+    const up = () => setIsDragging(false)
+    document.addEventListener('mouseup', up)
+    return () => document.removeEventListener('mouseup', up)
+  }, [])
+
+  // Keyboard shortcuts — registered once, reads state from stateRef
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const { selection, clipboard, allWorkers, days, reportMap, editing, showBulkEdit } =
+        stateRef.current
+      // Don't interfere when a modal is open
+      if (editing || showBulkEdit) return
+      if (!selection) return
+
+      if (e.key === 'Escape') {
+        setSelection(null)
+        e.preventDefault()
+        return
+      }
+
+      if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+        setShowBulkEdit(true)
+        e.preventDefault()
+        return
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const { minW, maxW, minD, maxD } = selectionRange(selection)
+        const grid: (ReportRow | null)[][] = []
+        for (let wi = minW; wi <= maxW; wi++) {
+          const row: (ReportRow | null)[] = []
+          for (let di = minD; di <= maxD; di++) {
+            row.push(reportMap.get(`${allWorkers[wi]?.id}_${days[di]}`) ?? null)
+          }
+          grid.push(row)
+        }
+        setClipboard({ rows: maxW - minW + 1, cols: maxD - minD + 1, grid })
+        toast.success(`${(maxW - minW + 1) * (maxD - minD + 1)}件をコピーしました`)
+        e.preventDefault()
+        return
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard) {
+        const { minW: startW, minD: startD } = selectionRange(selection)
+        const cells: BulkCellPayload[] = []
+        for (let ri = 0; ri < clipboard.rows; ri++) {
+          for (let ci = 0; ci < clipboard.cols; ci++) {
+            const wIdx = startW + ri
+            const dIdx = startD + ci
+            if (wIdx >= allWorkers.length || dIdx >= days.length) continue
+            const src = clipboard.grid[ri]?.[ci]
+            if (!src) continue
+            const worker = allWorkers[wIdx]
+            const day = days[dIdx]
+            const existing = reportMap.get(`${worker.id}_${day}`)
+            cells.push({
+              worker_id: worker.id,
+              work_date: day,
+              day_yakan_id: src.day_yakan_id,
+              over_hour: src.over_hour,
+              work_content_id: src.work_content_id,
+              health_type_id: src.health_type_id,
+              existing_id: existing?.id,
+            })
+          }
+        }
+        if (cells.length > 0) pasteMutateRef.current?.(cells)
+        e.preventDefault()
+        return
+      }
+    }
+
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  function handleCellMouseDown(wIdx: number, dIdx: number, e: React.MouseEvent) {
+    e.preventDefault()
+    hasDraggedRef.current = false
+
+    if (e.shiftKey && selection) {
+      // Extend selection from existing anchor
+      setSelection({ anchor: selection.anchor, active: { wIdx, dIdx } })
+      hasDraggedRef.current = true
+      return
+    }
+
+    setSelection({ anchor: { wIdx, dIdx }, active: { wIdx, dIdx } })
+    setIsDragging(true)
+  }
+
+  function handleCellMouseEnter(wIdx: number, dIdx: number) {
+    if (!isDragging || !selection) return
+    if (wIdx !== selection.anchor.wIdx || dIdx !== selection.anchor.dIdx) {
+      hasDraggedRef.current = true
+    }
+    setSelection(prev => (prev ? { anchor: prev.anchor, active: { wIdx, dIdx } } : null))
+  }
+
+  function handleCellMouseUp(wIdx: number, dIdx: number, worker: WorkerSummary, day: string) {
+    if (!hasDraggedRef.current) {
+      // Pure click — open single cell editor
+      const report = reportMap.get(`${worker.id}_${day}`) ?? null
+      setEditing({ workerId: worker.id, date: day, report })
+      setSelection(null)
+    }
+    setIsDragging(false)
+  }
+
+  function handleCopyToolbar() {
+    if (!selection) return
+    const { minW, maxW, minD, maxD } = selectionRange(selection)
+    const grid: (ReportRow | null)[][] = []
+    for (let wi = minW; wi <= maxW; wi++) {
+      const row: (ReportRow | null)[] = []
+      for (let di = minD; di <= maxD; di++) {
+        row.push(reportMap.get(`${allWorkers[wi].id}_${days[di]}`) ?? null)
+      }
+      grid.push(row)
+    }
+    setClipboard({ rows: maxW - minW + 1, cols: maxD - minD + 1, grid })
+    toast.success(`${(maxW - minW + 1) * (maxD - minD + 1)}件をコピーしました`)
+  }
+
+  function handlePasteToolbar() {
+    if (!selection || !clipboard) return
+    const { minW: startW, minD: startD } = selectionRange(selection)
+    const cells: BulkCellPayload[] = []
+    for (let ri = 0; ri < clipboard.rows; ri++) {
+      for (let ci = 0; ci < clipboard.cols; ci++) {
+        const wIdx = startW + ri
+        const dIdx = startD + ci
+        if (wIdx >= allWorkers.length || dIdx >= days.length) continue
+        const src = clipboard.grid[ri]?.[ci]
+        if (!src) continue
+        const worker = allWorkers[wIdx]
+        const day = days[dIdx]
+        const existing = reportMap.get(`${worker.id}_${day}`)
+        cells.push({
+          worker_id: worker.id,
+          work_date: day,
+          day_yakan_id: src.day_yakan_id,
+          over_hour: src.over_hour,
+          work_content_id: src.work_content_id,
+          health_type_id: src.health_type_id,
+          existing_id: existing?.id,
+        })
+      }
+    }
+    if (cells.length > 0) pasteMutation.mutate(cells)
+  }
+
+  const selCount = selection
+    ? (() => {
+        const { minW, maxW, minD, maxD } = selectionRange(selection)
+        return (maxW - minW + 1) * (maxD - minD + 1)
+      })()
+    : 0
+
+  const bulkCells: BulkCell[] = selection
+    ? (() => {
+        const { minW, maxW, minD, maxD } = selectionRange(selection)
+        const out: BulkCell[] = []
+        for (let wi = minW; wi <= maxW; wi++) {
+          for (let di = minD; di <= maxD; di++) {
+            const worker = allWorkers[wi]
+            const day = days[di]
+            out.push({
+              workerId: worker.id,
+              workerName: worker.worker_name,
+              date: day,
+              report: reportMap.get(`${worker.id}_${day}`) ?? null,
+            })
+          }
+        }
+        return out
+      })()
+    : []
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-4 px-4 py-2 border-b border-gray-200">
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
-        >
-          ＋ 作業者を追加
-        </button>
-        <div className="flex gap-3 text-xs text-gray-400 ml-2">
-          <span><span className="text-blue-500 font-bold">!</span> 新規</span>
-          <span><span className="text-orange-500">▲</span> 編集済</span>
-          <span><span className="text-red-500">✕</span> 競合</span>
-        </div>
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 min-h-[44px]">
+        {selection ? (
+          <>
+            <span className="text-sm font-medium text-blue-700">{selCount}件選択中</span>
+            <button
+              onClick={() => setShowBulkEdit(true)}
+              className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              一括入力
+            </button>
+            <button
+              onClick={handleCopyToolbar}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
+            >
+              コピー
+            </button>
+            {clipboard && (
+              <button
+                onClick={handlePasteToolbar}
+                disabled={pasteMutation.isPending}
+                className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+              >
+                貼り付け
+              </button>
+            )}
+            <button
+              onClick={() => setSelection(null)}
+              className="text-sm px-2 py-1.5 text-gray-500 hover:text-gray-700"
+            >
+              解除
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
+            >
+              ＋ 作業者を追加
+            </button>
+            <div className="flex gap-3 text-xs text-gray-400 ml-2">
+              <span><span className="text-blue-500 font-bold">!</span> 新規</span>
+              <span><span className="text-orange-500">▲</span> 編集済</span>
+              <span><span className="text-red-500">✕</span> 競合</span>
+            </div>
+            {clipboard && (
+              <span className="text-xs text-gray-400 ml-2 italic">コピー済（セル選択後に Ctrl+V）</span>
+            )}
+          </>
+        )}
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" style={{ userSelect: 'none' }}>
         <table className="border-collapse text-xs">
           <thead>
             <tr>
@@ -110,25 +412,26 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
             </tr>
           </thead>
           <tbody>
-            {allWorkers.map(worker => (
+            {allWorkers.map((worker, wIdx) => (
               <tr key={worker.id} className="hover:bg-gray-50/50">
-                <td
-                  className="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-1.5 whitespace-nowrap"
-                >
+                <td className="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-1.5 whitespace-nowrap">
                   <div className="text-gray-400 text-xs leading-tight">{worker.company_name}</div>
                   <div className="font-medium text-gray-900">{worker.worker_name}</div>
                 </td>
-                {days.map(day => {
+                {days.map((day, dIdx) => {
                   const report = reportMap.get(`${worker.id}_${day}`)
                   const status = report?.sync_status
                   const isNight = report?.day_yakan_id === '105361'
                   const oh = report?.over_hour ?? 0
+                  const selected = isCellSelected(wIdx, dIdx, selection)
 
                   return (
                     <td
                       key={day}
-                      onClick={() => setEditing({ workerId: worker.id, date: day, report: report ?? null })}
-                      className={`border border-gray-200 cursor-pointer hover:bg-blue-50 text-center p-0.5 h-9 ${dayHeaderClass(day)}`}
+                      onMouseDown={e => handleCellMouseDown(wIdx, dIdx, e)}
+                      onMouseEnter={() => handleCellMouseEnter(wIdx, dIdx)}
+                      onMouseUp={() => handleCellMouseUp(wIdx, dIdx, worker, day)}
+                      className={`border border-gray-200 cursor-pointer text-center p-0.5 h-9 ${dayHeaderClass(day)} ${selected ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
                     >
                       {report && (
                         <div
@@ -172,7 +475,24 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
           report={editing.report}
           isAsbestos={isAsbestos}
           onClose={() => setEditing(null)}
-          onSuccess={() => { setEditing(null); onRefresh() }}
+          onSuccess={() => {
+            setEditing(null)
+            onRefresh()
+          }}
+        />
+      )}
+
+      {showBulkEdit && selection && (
+        <BulkEditModal
+          siteId={siteId}
+          cells={bulkCells}
+          isAsbestos={isAsbestos}
+          onClose={() => setShowBulkEdit(false)}
+          onSuccess={() => {
+            setShowBulkEdit(false)
+            setSelection(null)
+            onRefresh()
+          }}
         />
       )}
 

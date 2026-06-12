@@ -11,7 +11,7 @@ type Props = {
 }
 
 export function AddWorkerModal({ excludeWorkerIds, onAdd, onClose }: Props) {
-  const [search, setSearch] = useState('')
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const { data: workers, isLoading } = useQuery<Worker[]>({
@@ -19,25 +19,51 @@ export function AddWorkerModal({ excludeWorkerIds, onAdd, onClose }: Props) {
     queryFn: () => fetch('/api/workers').then(r => r.json()),
   })
 
-  const filtered = useMemo(() => {
-    if (!workers) return []
-    return workers
-      .filter(w => !excludeWorkerIds.includes(w.id))
-      .filter(w => {
-        if (!search) return true
-        const q = search.toLowerCase()
-        return (
-          w.worker_name.toLowerCase().includes(q) ||
-          w.company_name.toLowerCase().includes(q)
-        )
-      })
-  }, [workers, excludeWorkerIds, search])
+  // 追加可能な作業者（すでにグリッドにいる人を除外）
+  const available = useMemo(
+    () => (workers ?? []).filter(w => !excludeWorkerIds.includes(w.id)),
+    [workers, excludeWorkerIds]
+  )
 
-  function toggle(id: string) {
+  // 会社名リスト（50音順）
+  const companies = useMemo(
+    () =>
+      Array.from(new Set(available.map(w => w.company_name))).sort((a, b) =>
+        a.localeCompare(b, 'ja')
+      ),
+    [available]
+  )
+
+  // 選択中の会社の作業者
+  const workersInCompany = useMemo(
+    () =>
+      selectedCompany
+        ? available
+            .filter(w => w.company_name === selectedCompany)
+            .sort((a, b) => a.worker_name.localeCompare(b.worker_name, 'ja'))
+        : [],
+    [available, selectedCompany]
+  )
+
+  function toggleWorker(id: string) {
     setSelectedIds(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    const inCompany = new Set(workersInCompany.map(w => w.id))
+    const allSelected = workersInCompany.every(w => selectedIds.has(w.id))
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (allSelected) {
+        inCompany.forEach(id => next.delete(id))
+      } else {
+        inCompany.forEach(id => next.add(id))
+      }
       return next
     })
   }
@@ -47,51 +73,99 @@ export function AddWorkerModal({ excludeWorkerIds, onAdd, onClose }: Props) {
     onAdd(selected)
   }
 
+  function handleBack() {
+    setSelectedCompany(null)
+  }
+
+  const allInCompanySelected =
+    workersInCompany.length > 0 && workersInCompany.every(w => selectedIds.has(w.id))
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-gray-900">作業者を追加</h2>
+          <div className="flex items-center gap-2">
+            {selectedCompany && (
+              <button
+                onClick={handleBack}
+                className="text-gray-400 hover:text-gray-600 text-sm"
+              >
+                ←
+              </button>
+            )}
+            <h2 className="font-semibold text-gray-900">
+              {selectedCompany ?? '会社を選択'}
+            </h2>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <input
-          type="text"
-          placeholder="氏名・会社名で検索..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        {isLoading && (
+          <p className="py-8 text-center text-gray-400 text-sm">読み込み中...</p>
+        )}
 
-        <div className="overflow-y-auto max-h-72 border border-gray-200 rounded">
-          {isLoading && (
-            <p className="p-4 text-center text-gray-400 text-sm">読み込み中...</p>
-          )}
-          {!isLoading && filtered.length === 0 && (
-            <p className="p-4 text-center text-gray-400 text-sm">
-              {workers?.length === 0
-                ? 'マスタ取込が必要です'
-                : '該当する作業者がいません'}
-            </p>
-          )}
-          {filtered.map(w => (
-            <label
-              key={w.id}
-              className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
-            >
-              <input
-                type="checkbox"
-                checked={selectedIds.has(w.id)}
-                onChange={() => toggle(w.id)}
-                className="rounded"
-              />
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-900">{w.worker_name}</div>
-                <div className="text-xs text-gray-400">{w.company_name}</div>
+        {!isLoading && !selectedCompany && (
+          <>
+            {companies.length === 0 ? (
+              <p className="py-8 text-center text-gray-400 text-sm">
+                {(workers?.length ?? 0) === 0 ? 'マスタ取込が必要です' : '追加できる作業者がいません'}
+              </p>
+            ) : (
+              <div className="overflow-y-auto max-h-72 border border-gray-200 rounded">
+                {companies.map(company => {
+                  const count = available.filter(w => w.company_name === company).length
+                  return (
+                    <button
+                      key={company}
+                      onClick={() => setSelectedCompany(company)}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 text-left"
+                    >
+                      <span className="text-sm text-gray-900">{company}</span>
+                      <span className="text-xs text-gray-400">{count}名 ›</span>
+                    </button>
+                  )
+                })}
               </div>
-            </label>
-          ))}
-        </div>
+            )}
+          </>
+        )}
+
+        {!isLoading && selectedCompany && (
+          <>
+            <div className="overflow-y-auto max-h-72 border border-gray-200 rounded">
+              {workersInCompany.length === 0 ? (
+                <p className="p-4 text-center text-gray-400 text-sm">追加できる作業者がいません</p>
+              ) : (
+                <>
+                  {/* 全選択行 */}
+                  <label className="flex items-center gap-3 px-3 py-2 bg-gray-50 cursor-pointer border-b border-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={allInCompanySelected}
+                      onChange={toggleAll}
+                      className="rounded"
+                    />
+                    <span className="text-xs font-medium text-gray-600">全員選択</span>
+                  </label>
+                  {workersInCompany.map(w => (
+                    <label
+                      key={w.id}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(w.id)}
+                        onChange={() => toggleWorker(w.id)}
+                        className="rounded"
+                      />
+                      <span className="text-sm text-gray-900">{w.worker_name}</span>
+                    </label>
+                  ))}
+                </>
+              )}
+            </div>
+          </>
+        )}
 
         <div className="flex items-center justify-between mt-4">
           <span className="text-sm text-gray-500">{selectedIds.size}名選択中</span>
