@@ -1,15 +1,6 @@
-import { cookies } from 'next/headers'
-import { createSessionClient } from '@/lib/supabase/server'
-import type { User } from '@supabase/supabase-js'
+type AuthUser = { id: string }
 
-// API Route Handler の冒頭で呼ぶ。未認証なら null を返す
-export async function getAuthenticatedUser(): Promise<User | null> {
-  try {
-    const cookieStore = await cookies()
-    const supabase = createSessionClient(cookieStore)
-    const { data: { user } } = await supabase.auth.getUser()
-    return user ?? null
-  } catch {
-    return null
-  }
+// 認証なしで常にシステムユーザーを返す
+export async function getAuthenticatedUser(): Promise<AuthUser | null> {
+  return { id: process.env.SYSTEM_USER_ID ?? 'system' }
 }
