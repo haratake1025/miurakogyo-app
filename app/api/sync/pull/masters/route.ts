@@ -59,8 +59,26 @@ export async function POST(req: NextRequest) {
       ...partners.map(toPartnerWorkerRow),
     ]
 
-    const employeeRows = workerRows.filter((r): r is WorkerRow => r.source_kind === 'employee')
-    const partnerRows = workerRows.filter((r): r is WorkerRow => r.source_kind === 'partner')
+    // CBO レスポンスに同一キーの重複エントリが含まれる場合があるため除去
+    // （重複があると ON CONFLICT DO UPDATE が同一行を2回更新しようとしてエラーになる）
+    const seenEmployees = new Set<string>()
+    const employeeRows = workerRows
+      .filter((r): r is WorkerRow => r.source_kind === 'employee')
+      .filter(r => {
+        if (seenEmployees.has(r.cbo_company_user_id!)) return false
+        seenEmployees.add(r.cbo_company_user_id!)
+        return true
+      })
+
+    const seenPartners = new Set<string>()
+    const partnerRows = workerRows
+      .filter((r): r is WorkerRow => r.source_kind === 'partner')
+      .filter(r => {
+        const k = `${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`
+        if (seenPartners.has(k)) return false
+        seenPartners.add(k)
+        return true
+      })
 
     if (employeeRows.length) {
       const { error } = await supabase
