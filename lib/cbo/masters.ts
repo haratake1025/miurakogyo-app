@@ -32,6 +32,7 @@ export type CboPartnerWorker = {
 export type CboReport = {
   cboReportId: string
   cboOrderId: string
+  cboOrderName: string | null     // onsite.label（現場名フィルタに使用）
   date: string
   dayYakanId: string | null
   overHour: number
@@ -241,13 +242,14 @@ function findReportNode(node: ReportNode, key: string): ReportNode | null {
   return null
 }
 
+// siteName: DB の sites.name（onsite.label と照合してフィルタ）
+// order_id フィルタは CBO 内部 ID の不一致で誤データを引くため使わない
 export async function listAttendanceReports(
-  orderId: string,
+  siteName: string,
   period: { from: string; to: string }
 ): Promise<CboReport[]> {
   const params = new URLSearchParams({
     format_id: '4879',
-    order_id: orderId,
     from: period.from,
     to: period.to,
   })
@@ -262,7 +264,11 @@ export async function listAttendanceReports(
       const detail = await cboFetch<{ data: { id: number; tree: ReportNode } }>(
         `/personal_daily_reports/${item.id}`
       )
-      reports.push(normalizeDetailReport(detail.data))
+      const report = normalizeDetailReport(detail.data)
+      // 現場名で絞り込み（trim で前後空白の差異を吸収）
+      if (report.cboOrderName?.trim() === siteName.trim()) {
+        reports.push(report)
+      }
     } catch {
       continue
     }
@@ -291,6 +297,7 @@ function normalizeDetailReport(r: { id: number; tree: ReportNode }): CboReport {
   return {
     cboReportId: String(r.id),
     cboOrderId: String(getVal('onsite') ?? ''),
+    cboOrderName: getLabel('onsite'),    // 現場名フィルタ用
     date: getLabel('start_date') ?? '',  // label="YYYY-MM-DD", value=UTC datetime
     dayYakanId: str(getVal('day_yakan')),
     overHour: num(getVal('over_hour')),
