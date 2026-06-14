@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
   let upserted = 0
   let conflicts = 0
-  let skipped = 0
+  const skipReasons: string[] = []
   const rowErrors: string[] = []
 
   for (const report of cboReports) {
@@ -81,14 +81,19 @@ export async function POST(req: NextRequest) {
     let workerId: string | undefined
     if (report.companyUserId) {
       workerId = employeeWorkerMap.get(report.companyUserId)
+      if (!workerId) {
+        skipReasons.push(`employee companyUserId=${report.companyUserId} not in map`)
+      }
     } else if (report.supplierId && report.supplierStaffId) {
       workerId = partnerWorkerMap.get(`${report.supplierId}:${report.supplierStaffId}`)
+      if (!workerId) {
+        skipReasons.push(`partner supplierId=${report.supplierId} staffId=${report.supplierStaffId} not in map`)
+      }
+    } else {
+      skipReasons.push(`report ${report.cboReportId}: no companyUserId and no supplierId/staffId`)
     }
 
-    if (!workerId) {
-      skipped++
-      continue
-    }
+    if (!workerId) continue
 
     const existing = existingMap.get(report.cboReportId)
     const isConflict = existing?.sync_status === 'local_edited'
@@ -111,6 +116,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const skipped = skipReasons.length
   const hasErrors = rowErrors.length > 0
   const msgParts = [
     `${upserted}件取込`,
@@ -119,12 +125,14 @@ export async function POST(req: NextRequest) {
     hasErrors && `エラー${rowErrors.length}件`,
   ].filter(Boolean).join('・')
 
+  // スキップ理由の先頭3件をログに記録して原因を追跡できるようにする
+  const debugInfo = skipReasons.slice(0, 3).join(' / ')
   await supabase.from('sync_logs').insert({
     direction: 'pull', target: 'report',
     status: hasErrors ? 'error' : 'success',
-    message: hasErrors ? `${msgParts} | ${rowErrors.slice(0, 3).join(' / ')}` : msgParts,
+    message: skipped > 0 ? `${msgParts} | ${debugInfo}` : msgParts,
     performed_by: user.id, performed_at: pulledAt,
   })
 
-  return NextResponse.json({ upserted, conflicts, skipped, errors: rowErrors })
+  return NextResponse.json({ upserted, conflicts, skipped, skipReasons: skipReasons.slice(0, 5), errors: rowErrors })
 }
