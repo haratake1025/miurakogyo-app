@@ -117,13 +117,13 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
           <tbody>
             <tr>
               <td style={{ ...cellBase, width: '22%', verticalAlign: 'top' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '6pt' }}>管轄工事会社:</div>
-                <div style={{ fontSize: '8pt', marginTop: '1mm' }}>{site.client_name ?? '　'}</div>
+                <div style={{ fontWeight: 'bold', fontSize: '12pt' }}>管轄工事会社:</div>
+                <div style={{ fontSize: '14pt', marginTop: '1mm' }}>{site.client_name ?? '　'}</div>
               </td>
-              <td style={{ ...cellBase, verticalAlign: 'top' }}>
-                <div><strong>工事 名称:</strong> {site.name}</div>
+              <td style={{ ...cellBase, verticalAlign: 'top', fontSize: '14pt' }}>
+                <div><strong>工事名称:</strong> {site.name}</div>
                 <div style={{ marginTop: '0.5mm' }}>
-                  <strong>工事 期間:</strong> {toWareki(site.period_start)} ～ {toWareki(site.period_end)}
+                  <strong>工事期間:</strong> {toWareki(site.period_start)} ～ {toWareki(site.period_end)}
                 </div>
                 <div style={{ marginTop: '0.5mm' }}>
                   <strong>現場責任者:</strong> {site.manager_name ?? '　'}
@@ -134,8 +134,14 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                 <table style={{ borderCollapse: 'collapse', fontSize: '6pt', width: '100%' }}>
                   <tbody>
                     <tr>
-                      <td style={{ width: '50%', paddingRight: '1mm', verticalAlign: 'top' }}>① 準備工事（足場・仮設構造物等）</td>
-                      <td style={{ color: 'red', verticalAlign: 'top' }}>⑤ 石綿板材処理</td>
+                      <td style={{ width: '35%', paddingRight: '1mm', verticalAlign: 'top' }}>① 準備工事（足場・仮設構造物等）</td>
+                      <td style={{ color: 'red', verticalAlign: 'top', width: '35%' }}>⑤ 石綿板材処理</td>
+                      <td rowSpan={4} style={{ verticalAlign: 'top', paddingLeft: '2mm', borderLeft: '1px solid #aaa', width: '30%' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '0.5mm' }}>健康状態確認（自己申告）</div>
+                        <div>〇 体調良好</div>
+                        <div>△ 体調やや不調</div>
+                        <div>✖ 体調不調 → 作業禁止</div>
+                      </td>
                     </tr>
                     <tr>
                       <td style={{ verticalAlign: 'top' }}>② 石綿除去作業（外壁材・保温材）</td>
@@ -148,11 +154,6 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                     <tr>
                       <td>④ 自己確認（立会等）</td>
                       <td>⑧ 分析</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={2} style={{ paddingTop: '0.5mm' }}>
-                        〇 体調良好（自己確認）　△ 体調やや不調　✖ 体調不調 → 作業禁止
-                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -168,7 +169,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
             <div>※現場監督者・責任者の人も作業者欄に記入し記録を残して下さい（但し、石綿に暴露される業務を実施した人のみ。又、勤務表で管理される人は用紙記入期間は勤怠表には記入しないこと）</div>
             <div>※健康状態確認は右上の表より番号及び記号を選択記入して下さい。</div>
           </div>
-          <div style={{ border, padding: '1mm 2mm', display: 'flex', alignItems: 'center', gap: '2mm', minWidth: '48mm' }}>
+          <div style={{ padding: '1mm 2mm', display: 'flex', alignItems: 'center', gap: '2mm', minWidth: '48mm' }}>
             <span style={{ fontSize: '6pt', whiteSpace: 'nowrap' }}>報告者:</span>
             <div style={{ flex: 1, borderBottom: '1px solid black', height: '4mm' }} />
           </div>
