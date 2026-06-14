@@ -93,6 +93,29 @@ export async function POST(req: NextRequest) {
       if (error) throw new Error(error.message)
     }
 
+    // CBO に存在しなくなった作業者を非活性化（削除ではなく is_active = false）
+    // target 指定がある場合はその種別のみ対象
+    if (target !== 'partner' && employeeRows.length) {
+      const activeIds = employeeRows.map(r => r.cbo_company_user_id!)
+      const { error } = await supabase
+        .from('workers')
+        .update({ is_active: false })
+        .eq('source_kind', 'employee')
+        .eq('is_active', true)
+        .not('cbo_company_user_id', 'in', `(${activeIds.join(',')})`)
+      if (error) throw new Error(error.message)
+    }
+    if (target !== 'employee' && partnerRows.length) {
+      const activeStaffIds = partnerRows.map(r => r.cbo_supplier_staff_id!)
+      const { error } = await supabase
+        .from('workers')
+        .update({ is_active: false })
+        .eq('source_kind', 'partner')
+        .eq('is_active', true)
+        .not('cbo_supplier_staff_id', 'in', `(${activeStaffIds.join(',')})`)
+      if (error) throw new Error(error.message)
+    }
+
     result.workers = workerRows.length
 
     await supabase.from('sync_logs').insert({
