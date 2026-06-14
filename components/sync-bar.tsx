@@ -28,9 +28,16 @@ export function SyncBar({ siteId, month, unsyncedCount, reportsQueryKey }: Props
         body: JSON.stringify({ siteId, from, to }),
       }).then(r => r.json()),
     onSuccess: data => {
-      toast.success(
-        `取込完了: ${data.upserted}件${data.conflicts ? `（競合${data.conflicts}件）` : ''}`
-      )
+      const parts = [
+        `${data.upserted}件取込`,
+        data.conflicts > 0 && `競合${data.conflicts}件`,
+        data.skipped > 0 && `未解決${data.skipped}件スキップ`,
+      ].filter(Boolean).join('・')
+      if (data.errors?.length > 0) {
+        toast.warning(`取込完了: ${parts}（エラー${data.errors.length}件）`)
+      } else {
+        toast.success(`取込完了: ${parts}`)
+      }
       qc.invalidateQueries({ queryKey: reportsQueryKey })
     },
     onError: () => toast.error('取込に失敗しました'),
