@@ -27,10 +27,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '現場が見つかりません' }, { status: 404 })
   }
 
-  // 作業者の CBO ID → DB UUID マップを構築
+  // 作業者の CBO ID → DB UUID マップを構築（上限を大きく設定して取りこぼし防止）
   const { data: workers } = await supabase
     .from('workers')
     .select('id, source_kind, cbo_company_user_id, cbo_supplier_id, cbo_supplier_staff_id')
+    .limit(10000)
 
   const employeeWorkerMap = new Map(
     (workers ?? [])
@@ -72,6 +73,8 @@ export async function POST(req: NextRequest) {
 
   let upserted = 0
   let conflicts = 0
+  let skipped = 0
+  const rowErrors: string[] = []
 
   for (const report of cboReports) {
     // worker_id を解決
@@ -82,7 +85,10 @@ export async function POST(req: NextRequest) {
       workerId = partnerWorkerMap.get(`${report.supplierId}:${report.supplierStaffId}`)
     }
 
-    if (!workerId) continue // 未知の作業者はスキップ
+    if (!workerId) {
+      skipped++
+      continue
+    }
 
     const existing = existingMap.get(report.cboReportId)
     const isConflict = existing?.sync_status === 'local_edited'
@@ -97,18 +103,28 @@ export async function POST(req: NextRequest) {
       .from('daily_reports')
       .upsert(rowWithStatus, { onConflict: 'cbo_report_id' })
 
-    if (!error) {
+    if (error) {
+      rowErrors.push(`report ${report.cboReportId}: ${error.message}`)
+    } else {
       upserted++
       if (isConflict) conflicts++
     }
   }
 
+  const hasErrors = rowErrors.length > 0
+  const msgParts = [
+    `${upserted}件取込`,
+    conflicts > 0 && `競合${conflicts}件`,
+    skipped > 0 && `未解決作業者${skipped}件スキップ`,
+    hasErrors && `エラー${rowErrors.length}件`,
+  ].filter(Boolean).join('・')
+
   await supabase.from('sync_logs').insert({
     direction: 'pull', target: 'report',
-    status: 'success',
-    message: `${upserted}件取込（競合${conflicts}件）`,
+    status: hasErrors ? 'error' : 'success',
+    message: hasErrors ? `${msgParts} | ${rowErrors.slice(0, 3).join(' / ')}` : msgParts,
     performed_by: user.id, performed_at: pulledAt,
   })
 
-  return NextResponse.json({ upserted, conflicts })
+  return NextResponse.json({ upserted, conflicts, skipped, errors: rowErrors })
 }
