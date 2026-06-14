@@ -129,32 +129,41 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                   <strong>現場責任者:</strong> {site.manager_name ?? '　'}
                 </div>
               </td>
-              <td style={{ ...cellBase, width: '42%', verticalAlign: 'top', fontSize: '6pt' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '7pt', marginBottom: '1mm' }}>作業内容・作業種別番号</div>
-                <table style={{ borderCollapse: 'collapse', fontSize: '6pt', width: '100%' }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ paddingRight: '2mm' }}>① 準備工事（足場・仮設構造物等）</td>
-                      <td>石綿板材処理</td>
-                    </tr>
-                    <tr>
-                      <td>② 石綿除去作業（外壁材・保温材）</td>
-                      <td>〇 健康状態確認：自己確認</td>
-                    </tr>
-                    <tr>
-                      <td>③ 作業の環境測定</td>
-                      <td>△ 養生・安全・品質管理</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={2}>⑦ 抜き取り　⑧ 分析</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={2} style={{ paddingTop: '0.5mm' }}>
-                        〇 体調良好　△ 体調やや不調　✖ 体調不調 → 作業禁止
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <td style={{ ...cellBase, width: '42%', verticalAlign: 'top', fontSize: '6pt', padding: 0 }}>
+                {/* 凡例 */}
+                <div style={{ padding: '0.5mm 1mm' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '7pt', marginBottom: '1mm' }}>作業内容・作業種別番号</div>
+                  <table style={{ borderCollapse: 'collapse', fontSize: '6pt', width: '100%' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ width: '50%', paddingRight: '1mm', verticalAlign: 'top' }}>① 準備工事（足場・仮設構造物等）</td>
+                        <td style={{ color: 'red', verticalAlign: 'top' }}>⑤ 石綿板材処理</td>
+                      </tr>
+                      <tr>
+                        <td style={{ verticalAlign: 'top' }}>② 石綿除去作業（外壁材・保温材）</td>
+                        <td style={{ color: 'red', verticalAlign: 'top' }}>⑥ 養生・安全・品質管理</td>
+                      </tr>
+                      <tr>
+                        <td>③ 作業の環境測定</td>
+                        <td>⑦ 抜き取り</td>
+                      </tr>
+                      <tr>
+                        <td>④ 自己確認（立会等）</td>
+                        <td>⑧ 分析</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={2} style={{ paddingTop: '0.5mm' }}>
+                          〇 体調良好（自己確認）　△ 体調やや不調　✖ 体調不調 → 作業禁止
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {/* 報告者欄 */}
+                <div style={{ borderTop: border, padding: '0.5mm 1mm', display: 'flex', alignItems: 'center', gap: '2mm' }}>
+                  <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>報告者:</span>
+                  <div style={{ flex: 1, height: '8mm' }} />
+                </div>
               </td>
             </tr>
           </tbody>
