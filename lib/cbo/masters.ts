@@ -157,9 +157,15 @@ export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
   const workers: CboPartnerWorker[] = []
 
   for (const supplierId of supplierIds) {
-    const detail = await cboFetch<{
-      data: { id: number; tree: TreeNode }
-    }>(`/supplier_trees/${supplierId}?evaluate_expression=0`)
+    let detail: { data: { id: number; tree: TreeNode } }
+    try {
+      detail = await cboFetch<{ data: { id: number; tree: TreeNode } }>(
+        `/supplier_trees/${supplierId}?evaluate_expression=0`
+      )
+    } catch {
+      // CBO が 500 などを返した場合はこの会社をスキップして続行
+      continue
+    }
 
     const tree = detail.data?.tree
     if (!tree) continue
