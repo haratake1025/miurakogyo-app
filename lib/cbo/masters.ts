@@ -226,6 +226,29 @@ export async function listAttendanceReports(
   return res.data.map(normalizeReport)
 }
 
+// デバッグ用: CBO 出面の生フィールドを返す（worker ID 解決問題の診断後に削除）
+export async function listAttendanceReportsRaw(
+  orderId: string,
+  period: { from: string; to: string }
+): Promise<Array<{ id: number; company_user_id: unknown; valueKeys: string[]; valueSnapshot: Record<string, unknown> }>> {
+  const params = new URLSearchParams({
+    format_id: '4879',
+    order_id: orderId,
+    from: period.from,
+    to: period.to,
+  })
+  const res = await cboFetch<{
+    data: Array<{ id: number; company_user_id: unknown; values: CboValue[] }>
+  }>(`/personal_daily_reports?${params}`)
+
+  return res.data.slice(0, 5).map(r => ({
+    id: r.id,
+    company_user_id: r.company_user_id,
+    valueKeys: (r.values ?? []).map(v => v.key),
+    valueSnapshot: Object.fromEntries((r.values ?? []).map(v => [v.key, v.value])),
+  }))
+}
+
 // ===== 出面単体 =====
 
 export async function getAttendanceReport(reportId: string): Promise<CboReport> {
