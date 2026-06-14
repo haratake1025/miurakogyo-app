@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         .from('sites')
         .upsert(siteRows, { onConflict: 'cbo_order_id' })
 
-      if (error) throw error
+      if (error) throw new Error(error.message)
       result.sites = siteRows.length
 
       await supabase.from('sync_logs').insert({
@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
   }
 
   // ===== 作業者 =====
+  // NOTE: workers テーブルの unique index は partial index（WHERE 句付き）のため
+  // PostgREST の onConflict では使用不可。fetch→分離→INSERT/UPDATE の手順で処理する。
   try {
     const [employees, partners] = await Promise.all([
       target !== 'partner' ? listEmployees() : Promise.resolve([]),
@@ -59,21 +61,65 @@ export async function POST(req: NextRequest) {
       ...partners.map(toPartnerWorkerRow),
     ]
 
-    // 社員・協力会社スタッフをそれぞれの unique index で一括 upsert
     const employeeRows = workerRows.filter((r): r is WorkerRow => r.source_kind === 'employee')
     const partnerRows = workerRows.filter((r): r is WorkerRow => r.source_kind === 'partner')
 
+    // ---- 社員 ----
     if (employeeRows.length) {
-      const { error } = await supabase
+      const cboUserIds = employeeRows.map(r => r.cbo_company_user_id!)
+      const { data: existing, error: fetchErr } = await supabase
         .from('workers')
-        .upsert(employeeRows, { onConflict: 'cbo_company_user_id' })
-      if (error) throw error
+        .select('id, cbo_company_user_id')
+        .in('cbo_company_user_id', cboUserIds)
+        .eq('source_kind', 'employee')
+      if (fetchErr) throw new Error(fetchErr.message)
+
+      const existingMap = new Map(existing?.map(e => [e.cbo_company_user_id as string, e.id as string]) ?? [])
+      const toInsert = employeeRows.filter(r => !existingMap.has(r.cbo_company_user_id!))
+      const toUpdate = employeeRows
+        .filter(r => existingMap.has(r.cbo_company_user_id!))
+        .map(r => ({ ...r, id: existingMap.get(r.cbo_company_user_id!)! }))
+
+      if (toInsert.length) {
+        const { error } = await supabase.from('workers').insert(toInsert)
+        if (error) throw new Error(error.message)
+      }
+      if (toUpdate.length) {
+        const { error } = await supabase.from('workers').upsert(toUpdate, { onConflict: 'id' })
+        if (error) throw new Error(error.message)
+      }
     }
+
+    // ---- 協力会社スタッフ ----
     if (partnerRows.length) {
-      const { error } = await supabase
+      const supplierIds = [...new Set(partnerRows.map(r => r.cbo_supplier_id!))]
+      const { data: existing, error: fetchErr } = await supabase
         .from('workers')
-        .upsert(partnerRows, { onConflict: 'cbo_supplier_id,cbo_supplier_staff_id' })
-      if (error) throw error
+        .select('id, cbo_supplier_id, cbo_supplier_staff_id')
+        .in('cbo_supplier_id', supplierIds)
+        .eq('source_kind', 'partner')
+      if (fetchErr) throw new Error(fetchErr.message)
+
+      const existingMap = new Map(
+        existing?.map(e => [
+          `${e.cbo_supplier_id}:${e.cbo_supplier_staff_id}`,
+          e.id as string,
+        ]) ?? []
+      )
+      const key = (r: WorkerRow) => `${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`
+      const toInsert = partnerRows.filter(r => !existingMap.has(key(r)))
+      const toUpdate = partnerRows
+        .filter(r => existingMap.has(key(r)))
+        .map(r => ({ ...r, id: existingMap.get(key(r))! }))
+
+      if (toInsert.length) {
+        const { error } = await supabase.from('workers').insert(toInsert)
+        if (error) throw new Error(error.message)
+      }
+      if (toUpdate.length) {
+        const { error } = await supabase.from('workers').upsert(toUpdate, { onConflict: 'id' })
+        if (error) throw new Error(error.message)
+      }
     }
 
     result.workers = workerRows.length
