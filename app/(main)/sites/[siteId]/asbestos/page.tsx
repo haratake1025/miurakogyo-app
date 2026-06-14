@@ -131,7 +131,7 @@ export default function AsbestosPage({
       </div>
 
       {/* Grid（印刷時は非表示） */}
-      <div className="flex-1 overflow-hidden print:hidden">
+      <div className="flex flex-col flex-1 overflow-hidden print:hidden">
         {isLoading ? (
           <div className="flex h-full items-center justify-center text-gray-400 text-sm">
             読み込み中...
