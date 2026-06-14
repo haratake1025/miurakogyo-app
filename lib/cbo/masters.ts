@@ -51,6 +51,11 @@ function extractVal(values: CboValue[], key: string): unknown {
   return values.find((v) => v.key === key)?.value ?? null
 }
 
+function extractLabel(values: CboValue[], key: string): string | null {
+  const label = values.find((v) => v.key === key)?.label
+  return label != null && label !== '' ? label : null
+}
+
 function str(v: unknown): string | null {
   return v != null && v !== '' ? String(v) : null
 }
@@ -77,8 +82,8 @@ export async function listSites(): Promise<CboSite[]> {
     .map((o) => ({
       cboOrderId: String(o.id),
       name: String(extractVal(o.values, 'contract_name') ?? ''),
-      clientName: str(extractVal(o.values, 'suppliers_name')),
-      managerName: str(extractVal(o.values, 'order_staff')),
+      clientName: extractLabel(o.values, 'suppliers_name'),
+      managerName: extractLabel(o.values, 'order_staff'),
       periodStart: str(extractVal(o.values, 'start_date_man')),
       periodEnd: str(extractVal(o.values, 'end_date_man')),
     }))

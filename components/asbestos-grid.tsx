@@ -35,10 +35,7 @@ function buildWorkers(reports: ReportRow[]): WorkerSummary[] {
   for (const r of reports) {
     if (!map.has(r.worker_id)) map.set(r.worker_id, r.worker)
   }
-  return Array.from(map.values()).sort((a, b) => {
-    const c = a.company_name.localeCompare(b.company_name, 'ja')
-    return c !== 0 ? c : a.worker_name.localeCompare(b.worker_name, 'ja')
-  })
+  return Array.from(map.values())
 }
 
 export function AsbestosGrid({ siteId, month, period, reports, onRefresh }: Props) {
