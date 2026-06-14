@@ -32,9 +32,9 @@ const border = '1px solid black'
 const cellBase: React.CSSProperties = { border, padding: '0.5mm 1mm', lineHeight: 1.3 }
 
 function companyFontSize(name: string): string {
-  if (name.length > 15) return '4.5pt'
-  if (name.length > 10) return '5.5pt'
-  return '6.5pt'
+  if (name.length > 15) return '6pt'
+  if (name.length > 10) return '7pt'
+  return '9pt'
 }
 
 function WorkerRow({
@@ -47,17 +47,17 @@ function WorkerRow({
 }) {
   return (
     <tr style={{ height: '10mm' }}>
-      <td style={{ ...cellBase, textAlign: 'center', fontSize: '6.5pt', width: '6mm' }}>{no}</td>
+      <td style={{ ...cellBase, textAlign: 'center', fontSize: '8pt', width: '6mm' }}>{no}</td>
       <td style={{ ...cellBase, fontSize: companyFontSize(worker.company_name) }}>{worker.company_name}</td>
-      <td style={{ ...cellBase, fontSize: '6.5pt', whiteSpace: 'nowrap' }}>{worker.worker_name}</td>
+      <td style={{ ...cellBase, fontSize: '9pt', whiteSpace: 'nowrap' }}>{worker.worker_name}</td>
       {days.map(day => {
         const r = reportMap.get(`${worker.id}_${day}`)
         const wc = r?.work_content_id ? (WORK_SHORT[r.work_content_id] ?? '') : ''
         const ht = r?.health_type_id ? (HEALTH_SHORT[r.health_type_id] ?? '') : ''
         return (
           <Fragment key={day}>
-            <td style={{ ...cellBase, textAlign: 'center', width: '8mm', fontSize: '10pt' }}>{wc}</td>
-            <td style={{ ...cellBase, textAlign: 'center', width: '8mm', fontSize: '10pt' }}>{ht}</td>
+            <td style={{ ...cellBase, textAlign: 'center', width: '8mm', fontSize: '13pt' }}>{wc}</td>
+            <td style={{ ...cellBase, textAlign: 'center', width: '8mm', fontSize: '13pt' }}>{ht}</td>
           </Fragment>
         )
       })}
@@ -68,7 +68,7 @@ function WorkerRow({
 function BlankRow({ no, colCount }: { no: number; colCount: number }) {
   return (
     <tr style={{ height: '10mm' }}>
-      <td style={{ ...cellBase, textAlign: 'center', fontSize: '6.5pt' }}>{no}</td>
+      <td style={{ ...cellBase, textAlign: 'center', fontSize: '8pt' }}>{no}</td>
       {Array.from({ length: colCount - 1 }).map((_, i) => (
         <td key={i} style={cellBase} />
       ))}
@@ -101,15 +101,15 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
     <div className="hidden print:block">
       <div style={{
         fontFamily: '"Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif',
-        fontSize: '7pt',
+        fontSize: '9pt',
         color: '#000',
         backgroundColor: '#fff',
       }}>
 
         {/* ===== タイトル行 ===== */}
         <div style={{ marginBottom: '2mm' }}>
-          <span style={{ fontSize: '13pt', fontWeight: 'bold' }}>石綿作業従事者作業記録</span>
-          <span style={{ fontSize: '11pt', fontWeight: 'bold', marginLeft: '8mm' }}>{m}月　{periodLabel}</span>
+          <span style={{ fontSize: '17pt', fontWeight: 'bold' }}>石綿作業従事者作業記録</span>
+          <span style={{ fontSize: '14pt', fontWeight: 'bold', marginLeft: '8mm' }}>{m}月　{periodLabel}</span>
         </div>
 
         {/* ===== ヘッダ情報（凡例を右端セルに配置） ===== */}
@@ -129,9 +129,9 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                   <strong>現場責任者:</strong> {site.manager_name ?? '　'}
                 </div>
               </td>
-              <td style={{ ...cellBase, width: '42%', verticalAlign: 'top', fontSize: '6pt' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '7pt', marginBottom: '1mm' }}>作業内容・作業種別番号</div>
-                <table style={{ borderCollapse: 'collapse', fontSize: '6pt', width: '100%' }}>
+              <td style={{ ...cellBase, width: '42%', verticalAlign: 'top', fontSize: '8pt' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '9pt', marginBottom: '1mm' }}>作業内容・作業種別番号</div>
+                <table style={{ borderCollapse: 'collapse', fontSize: '8pt', width: '100%' }}>
                   <tbody>
                     <tr>
                       <td style={{ width: '35%', paddingRight: '1mm', verticalAlign: 'top' }}>① 準備工事（足場・仮設構造物等）</td>
@@ -164,13 +164,13 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
 
         {/* ===== 注意事項 + 報告者 ===== */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '3mm', marginBottom: '1mm' }}>
-          <div style={{ flex: 1, fontSize: '5.5pt', lineHeight: 1.5 }}>
+          <div style={{ flex: 1, fontSize: '7pt', lineHeight: 1.5 }}>
             <div>※作業内容・作業種別番号のつけ方は石綿に暴露されるか否かで判断し、その判断は石綿作業主任者が行って下さい。</div>
             <div>※現場監督者・責任者の人も作業者欄に記入し記録を残して下さい（但し、石綿に暴露される業務を実施した人のみ。又、勤務表で管理される人は用紙記入期間は勤怠表には記入しないこと）</div>
             <div>※健康状態確認は右上の表より番号及び記号を選択記入して下さい。</div>
           </div>
           <div style={{ padding: '1mm 2mm', display: 'flex', alignItems: 'center', gap: '2mm', minWidth: '48mm' }}>
-            <span style={{ fontSize: '6pt', whiteSpace: 'nowrap' }}>報告者:</span>
+            <span style={{ fontSize: '8pt', whiteSpace: 'nowrap' }}>報告者:</span>
             <div style={{ flex: 1, borderBottom: '1px solid black', height: '4mm' }} />
           </div>
         </div>
@@ -190,13 +190,13 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
           </colgroup>
           <thead>
             <tr>
-              <th rowSpan={2} style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '6pt', verticalAlign: 'middle' }}>
+              <th rowSpan={2} style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '8pt', verticalAlign: 'middle' }}>
                 No.
               </th>
-              <th rowSpan={2} style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '6pt', verticalAlign: 'middle' }}>
+              <th rowSpan={2} style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '8pt', verticalAlign: 'middle' }}>
                 所属会社名
               </th>
-              <th rowSpan={2} style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '6pt', verticalAlign: 'middle' }}>
+              <th rowSpan={2} style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '8pt', verticalAlign: 'middle' }}>
                 作業者名
               </th>
               {days.map(day => {
@@ -204,7 +204,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                 const dayNum = d.getDate()
                 const weekLabel = WEEK_JP[d.getDay()]
                 return (
-                  <th key={day} colSpan={2} style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '6pt' }}>
+                  <th key={day} colSpan={2} style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '8pt' }}>
                     {m}月{dayNum}日<br />{weekLabel}
                   </th>
                 )
@@ -213,10 +213,10 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
             <tr>
               {days.map(day => (
                 <Fragment key={day}>
-                  <th style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '5.5pt' }}>
+                  <th style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '7pt' }}>
                     作業<br />内容
                   </th>
-                  <th style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '5.5pt' }}>
+                  <th style={{ ...cellBase, textAlign: 'center', fontWeight: 'bold', fontSize: '7pt' }}>
                     健康<br />状態
                   </th>
                 </Fragment>
@@ -239,7 +239,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
             <tr>
               <td style={{ ...cellBase, verticalAlign: 'top', height: '22mm' }}>
                 <div style={{ fontWeight: 'bold' }}>備　考:</div>
-                <div style={{ fontSize: '6pt', color: '#555', marginTop: '1mm' }}>（新しく汚染された場合の応急措置概要等）</div>
+                <div style={{ fontSize: '8pt', color: '#555', marginTop: '1mm' }}>（新しく汚染された場合の応急措置概要等）</div>
               </td>
             </tr>
           </tbody>
