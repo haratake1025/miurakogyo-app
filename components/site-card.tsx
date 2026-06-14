@@ -12,11 +12,22 @@ export function SiteCard({ site }: { site: Site }) {
     <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow transition-shadow">
       <div className="flex items-start justify-between mb-2">
         <h2 className="font-semibold text-gray-900 text-sm leading-snug">{site.name}</h2>
-        {site.is_asbestos && (
-          <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded shrink-0 ml-2">
-            石綿
-          </span>
-        )}
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          {site.cbo_status && (
+            <span className={`text-xs px-1.5 py-0.5 rounded ${
+              site.cbo_status === '完工'
+                ? 'bg-gray-100 text-gray-500'
+                : 'bg-green-100 text-green-700'
+            }`}>
+              {site.cbo_status}
+            </span>
+          )}
+          {site.is_asbestos && (
+            <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">
+              石綿
+            </span>
+          )}
+        </div>
       </div>
       <div className="text-xs text-gray-500 space-y-0.5 mb-4">
         <p>{site.client_name ?? '—'}</p>

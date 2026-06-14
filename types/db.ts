@@ -7,6 +7,7 @@ export type Site = {
   name: string
   client_name: string | null
   manager_name: string | null
+  cbo_status: string | null
   is_asbestos: boolean
   period_start: string | null
   period_end: string | null

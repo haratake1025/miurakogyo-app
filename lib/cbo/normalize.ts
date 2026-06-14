@@ -10,6 +10,7 @@ export type SiteRow = {
   name: string
   client_name: string | null
   manager_name: string | null
+  cbo_status: string | null
   is_asbestos: true
   period_start: string | null
   period_end: string | null
@@ -67,6 +68,7 @@ export function toSiteRow(site: CboSite): SiteRow {
     name: site.name,
     client_name: site.clientName,
     manager_name: site.managerName,
+    cbo_status: site.status,
     is_asbestos: true,
     period_start: site.periodStart,
     period_end: site.periodEnd,

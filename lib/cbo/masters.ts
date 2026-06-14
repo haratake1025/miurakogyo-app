@@ -11,6 +11,7 @@ export type CboSite = {
   name: string
   clientName: string | null
   managerName: string | null
+  status: string | null
   periodStart: string | null
   periodEnd: string | null
 }
@@ -70,9 +71,9 @@ function num(v: unknown): number {
 
 export async function listSites(): Promise<CboSite[]> {
   const viewId = process.env.CBO_ORDER_VIEW_ID ?? '8440'
-  const res = await cboFetch<{ data: Array<{ id: number; values: CboValue[] }> }>(
-    `/order_custom_views/${viewId}/orders`
-  )
+  const res = await cboFetch<{
+    data: Array<{ id: number; values: CboValue[]; status?: { name: string } }>
+  }>(`/order_custom_views/${viewId}/orders`)
 
   return res.data
     .filter((o) => {
@@ -84,6 +85,7 @@ export async function listSites(): Promise<CboSite[]> {
       name: String(extractVal(o.values, 'contract_name') ?? ''),
       clientName: extractLabel(o.values, 'suppliers_name'),
       managerName: extractLabel(o.values, 'order_staff'),
+      status: o.status?.name ?? null,
       periodStart: str(extractVal(o.values, 'start_date_man')),
       periodEnd: str(extractVal(o.values, 'end_date_man')),
     }))
