@@ -17,7 +17,11 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient()
   const now = new Date().toISOString()
-  const result = { sites: 0, workers: 0, errors: [] as string[] }
+  const result = {
+    sites: { inserted: 0, updated: 0 },
+    workers: 0,
+    errors: [] as string[],
+  }
 
   // ===== 現場 ===== (target指定なしのみ)
   if (!target) {
@@ -25,16 +29,27 @@ export async function POST(req: NextRequest) {
       const cboSites = await listSites()
       const siteRows = cboSites.map(toSiteRow)
 
+      // 既存 cbo_order_id を照合して新規 / 更新件数を計算
+      const cboIds = siteRows.map(r => r.cbo_order_id)
+      const { data: existing } = await supabase
+        .from('sites')
+        .select('cbo_order_id')
+        .in('cbo_order_id', cboIds)
+      const existingIds = new Set((existing ?? []).map(s => s.cbo_order_id))
+      const insertCount = siteRows.filter(r => !existingIds.has(r.cbo_order_id)).length
+      const updateCount = siteRows.filter(r => existingIds.has(r.cbo_order_id)).length
+
       const { error } = await supabase
         .from('sites')
         .upsert(siteRows, { onConflict: 'cbo_order_id' })
 
       if (error) throw new Error(error.message)
-      result.sites = siteRows.length
+      result.sites = { inserted: insertCount, updated: updateCount }
 
       await supabase.from('sync_logs').insert({
         direction: 'pull', target: 'site',
-        status: 'success', message: `${siteRows.length}件取込`,
+        status: 'success',
+        message: `新規${insertCount}件・更新${updateCount}件`,
         performed_by: user.id, performed_at: now,
       })
     } catch (e) {

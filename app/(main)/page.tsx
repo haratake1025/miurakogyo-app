@@ -19,8 +19,12 @@ export default function SiteListPage() {
   const pullMasters = useMutation({
     mutationFn: () =>
       fetch('/api/sync/pull/masters', { method: 'POST' }).then(r => r.json()),
-    onSuccess: () => {
-      toast.success('マスタ取込完了')
+    onSuccess: (data) => {
+      const s = data.sites
+      const sitePart = s
+        ? `現場 新規${s.inserted}件・更新${s.updated}件`
+        : '現場取込完了'
+      toast.success(`マスタ取込完了: ${sitePart}`)
       qc.invalidateQueries({ queryKey: ['sites'] })
     },
     onError: () => toast.error('マスタ取込に失敗しました'),
