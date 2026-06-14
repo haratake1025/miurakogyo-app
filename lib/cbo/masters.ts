@@ -67,20 +67,23 @@ function num(v: unknown): number {
 }
 
 // ===== 現場一覧 =====
-// 実レスポンス: { data: [{ id, order_format_id, values: [{key, value, label}] }] }
-// asbests は values 内の key。null = 石綿でない → アプリ側でフィルタ
+// 実レスポンス: { data: [{ id, title, order_format_id, values: [{key, value, label}], status }] }
+// 現場名は title（CBO画面で変更されるフィールド）を優先し、空の場合は contract_name にフォールバック
 
 export async function listSites(): Promise<CboSite[]> {
   const viewId = process.env.CBO_ORDER_VIEW_ID ?? '8440'
   const res = await cboFetch<{
-    data: Array<{ id: number; values: CboValue[]; status?: { name: string } }>
+    data: Array<{ id: number; title?: string; values: CboValue[]; status?: { name: string } }>
   }>(`/order_custom_views/${viewId}/orders`)
 
   return res.data.map((o) => {
     const asbests = extractVal(o.values, 'asbests')
+    // title が案件リストで表示・編集される名称。contract_name はカスタム項目で更新漏れがある
+    const name = o.title?.trim()
+      || String(extractVal(o.values, 'contract_name') ?? '').trim()
     return {
       cboOrderId: String(o.id),
-      name: String(extractVal(o.values, 'contract_name') ?? ''),
+      name,
       clientName: extractLabel(o.values, 'suppliers_name'),
       managerName: extractLabel(o.values, 'order_staff'),
       status: o.status?.name ?? null,
