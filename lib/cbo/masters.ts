@@ -12,6 +12,7 @@ export type CboSite = {
   clientName: string | null
   managerName: string | null
   status: string | null
+  isAsbestos: boolean
   periodStart: string | null
   periodEnd: string | null
 }
@@ -75,20 +76,19 @@ export async function listSites(): Promise<CboSite[]> {
     data: Array<{ id: number; values: CboValue[]; status?: { name: string } }>
   }>(`/order_custom_views/${viewId}/orders`)
 
-  return res.data
-    .filter((o) => {
-      const asbests = extractVal(o.values, 'asbests')
-      return asbests !== null && asbests !== undefined && asbests !== ''
-    })
-    .map((o) => ({
+  return res.data.map((o) => {
+    const asbests = extractVal(o.values, 'asbests')
+    return {
       cboOrderId: String(o.id),
       name: String(extractVal(o.values, 'contract_name') ?? ''),
       clientName: extractLabel(o.values, 'suppliers_name'),
       managerName: extractLabel(o.values, 'order_staff'),
       status: o.status?.name ?? null,
+      isAsbestos: asbests !== null && asbests !== undefined && asbests !== '',
       periodStart: str(extractVal(o.values, 'start_date_man')),
       periodEnd: str(extractVal(o.values, 'end_date_man')),
-    }))
+    }
+  })
 }
 
 // ===== 社員一覧 =====

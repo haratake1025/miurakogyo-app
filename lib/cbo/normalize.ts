@@ -11,7 +11,7 @@ export type SiteRow = {
   client_name: string | null
   manager_name: string | null
   cbo_status: string | null
-  is_asbestos: true
+  is_asbestos: boolean
   period_start: string | null
   period_end: string | null
   last_synced_at: string  // ISO timestamp
@@ -69,7 +69,7 @@ export function toSiteRow(site: CboSite): SiteRow {
     client_name: site.clientName,
     manager_name: site.managerName,
     cbo_status: site.status,
-    is_asbestos: true,
+    is_asbestos: site.isAsbestos,
     period_start: site.periodStart,
     period_end: site.periodEnd,
     last_synced_at: now(),
