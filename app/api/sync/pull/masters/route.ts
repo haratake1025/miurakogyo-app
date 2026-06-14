@@ -5,6 +5,9 @@ import { listSites, listEmployees, listPartnerWorkers } from '@/lib/cbo/masters'
 import { toSiteRow, toEmployeeRow, toPartnerWorkerRow } from '@/lib/cbo/normalize'
 import type { WorkerRow } from '@/lib/cbo/normalize'
 
+// CBO のスロットル（500ms/件）× 会社数分の時間が必要なため上限を延ばす
+export const maxDuration = 300
+
 export async function POST(req: NextRequest) {
   const user = await getAuthenticatedUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -56,43 +59,20 @@ export async function POST(req: NextRequest) {
       ...partners.map(toPartnerWorkerRow),
     ]
 
-    const { data: existingWorkers } = await supabase
-      .from('workers')
-      .select('id, source_kind, cbo_company_user_id, cbo_supplier_id, cbo_supplier_staff_id')
+    // 社員・協力会社スタッフをそれぞれの unique index で一括 upsert
+    const employeeRows = workerRows.filter((r): r is WorkerRow => r.source_kind === 'employee')
+    const partnerRows = workerRows.filter((r): r is WorkerRow => r.source_kind === 'partner')
 
-    const employeeMap = new Map(
-      (existingWorkers ?? [])
-        .filter((w) => w.source_kind === 'employee')
-        .map((w) => [w.cbo_company_user_id as string, w.id as string])
-    )
-    const partnerMap = new Map(
-      (existingWorkers ?? [])
-        .filter((w) => w.source_kind === 'partner')
-        .map((w) => [`${w.cbo_supplier_id}:${w.cbo_supplier_staff_id}`, w.id as string])
-    )
-
-    const toInsert: WorkerRow[] = []
-    const toUpdate: Array<WorkerRow & { _id: string }> = []
-
-    for (const row of workerRows) {
-      if (row.source_kind === 'employee') {
-        const existingId = employeeMap.get(row.cbo_company_user_id!)
-        if (existingId) toUpdate.push({ ...row, _id: existingId })
-        else toInsert.push(row)
-      } else {
-        const key = `${row.cbo_supplier_id}:${row.cbo_supplier_staff_id}`
-        const existingId = partnerMap.get(key)
-        if (existingId) toUpdate.push({ ...row, _id: existingId })
-        else toInsert.push(row)
-      }
-    }
-
-    if (toInsert.length) {
-      const { error } = await supabase.from('workers').insert(toInsert)
+    if (employeeRows.length) {
+      const { error } = await supabase
+        .from('workers')
+        .upsert(employeeRows, { onConflict: 'cbo_company_user_id' })
       if (error) throw error
     }
-    for (const { _id, ...row } of toUpdate) {
-      const { error } = await supabase.from('workers').update(row).eq('id', _id)
+    if (partnerRows.length) {
+      const { error } = await supabase
+        .from('workers')
+        .upsert(partnerRows, { onConflict: 'cbo_supplier_id,cbo_supplier_staff_id' })
       if (error) throw error
     }
 
@@ -100,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     await supabase.from('sync_logs').insert({
       direction: 'pull', target: 'worker',
-      status: 'success', message: `${workerRows.length}件取込（新規${toInsert.length}件）`,
+      status: 'success', message: `${workerRows.length}件取込`,
       performed_by: user.id, performed_at: now,
     })
   } catch (e) {
