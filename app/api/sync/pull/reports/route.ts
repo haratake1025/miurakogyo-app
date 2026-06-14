@@ -16,10 +16,9 @@ export async function POST(req: NextRequest) {
   const supabase = createServerClient()
   const pulledAt = new Date().toISOString()
 
-  // 現場の cbo_order_id を取得
   const { data: site, error: siteError } = await supabase
     .from('sites')
-    .select('id, cbo_order_id')
+    .select('id, name, cbo_order_id')
     .eq('id', siteId)
     .single()
 
@@ -47,7 +46,7 @@ export async function POST(req: NextRequest) {
   // CBO から出面取得
   let cboReports
   try {
-    cboReports = await listAttendanceReports(site.cbo_order_id, { from, to })
+    cboReports = await listAttendanceReports(site.name, { from, to })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     await supabase.from('sync_logs').insert({
