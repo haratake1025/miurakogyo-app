@@ -129,51 +129,49 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                   <strong>現場責任者:</strong> {site.manager_name ?? '　'}
                 </div>
               </td>
-              <td style={{ ...cellBase, width: '42%', verticalAlign: 'top', fontSize: '6pt', padding: 0 }}>
-                {/* 凡例 */}
-                <div style={{ padding: '0.5mm 1mm' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '7pt', marginBottom: '1mm' }}>作業内容・作業種別番号</div>
-                  <table style={{ borderCollapse: 'collapse', fontSize: '6pt', width: '100%' }}>
-                    <tbody>
-                      <tr>
-                        <td style={{ width: '50%', paddingRight: '1mm', verticalAlign: 'top' }}>① 準備工事（足場・仮設構造物等）</td>
-                        <td style={{ color: 'red', verticalAlign: 'top' }}>⑤ 石綿板材処理</td>
-                      </tr>
-                      <tr>
-                        <td style={{ verticalAlign: 'top' }}>② 石綿除去作業（外壁材・保温材）</td>
-                        <td style={{ color: 'red', verticalAlign: 'top' }}>⑥ 養生・安全・品質管理</td>
-                      </tr>
-                      <tr>
-                        <td>③ 作業の環境測定</td>
-                        <td>⑦ 抜き取り</td>
-                      </tr>
-                      <tr>
-                        <td>④ 自己確認（立会等）</td>
-                        <td>⑧ 分析</td>
-                      </tr>
-                      <tr>
-                        <td colSpan={2} style={{ paddingTop: '0.5mm' }}>
-                          〇 体調良好（自己確認）　△ 体調やや不調　✖ 体調不調 → 作業禁止
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                {/* 報告者欄 */}
-                <div style={{ borderTop: border, padding: '0.5mm 1mm', display: 'flex', alignItems: 'center', gap: '2mm' }}>
-                  <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>報告者:</span>
-                  <div style={{ flex: 1, height: '8mm' }} />
-                </div>
+              <td style={{ ...cellBase, width: '42%', verticalAlign: 'top', fontSize: '6pt' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '7pt', marginBottom: '1mm' }}>作業内容・作業種別番号</div>
+                <table style={{ borderCollapse: 'collapse', fontSize: '6pt', width: '100%' }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ width: '50%', paddingRight: '1mm', verticalAlign: 'top' }}>① 準備工事（足場・仮設構造物等）</td>
+                      <td style={{ color: 'red', verticalAlign: 'top' }}>⑤ 石綿板材処理</td>
+                    </tr>
+                    <tr>
+                      <td style={{ verticalAlign: 'top' }}>② 石綿除去作業（外壁材・保温材）</td>
+                      <td style={{ color: 'red', verticalAlign: 'top' }}>⑥ 養生・安全・品質管理</td>
+                    </tr>
+                    <tr>
+                      <td>③ 作業の環境測定</td>
+                      <td>⑦ 抜き取り</td>
+                    </tr>
+                    <tr>
+                      <td>④ 自己確認（立会等）</td>
+                      <td>⑧ 分析</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={2} style={{ paddingTop: '0.5mm' }}>
+                        〇 体調良好（自己確認）　△ 体調やや不調　✖ 体調不調 → 作業禁止
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </td>
             </tr>
           </tbody>
         </table>
 
-        {/* ===== 注意事項 ===== */}
-        <div style={{ fontSize: '5.5pt', lineHeight: 1.5, marginBottom: '1mm' }}>
-          <div>※作業内容・作業種別番号のつけ方は石綿に暴露されるか否かで判断し、その判断は石綿作業主任者が行って下さい。</div>
-          <div>※現場監督者・責任者の人も作業者欄に記入し記録を残して下さい（但し、石綿に暴露される業務を実施した人のみ。又、勤務表で管理される人は用紙記入期間は勤怠表には記入しないこと）</div>
-          <div>※健康状態確認は右上の表より番号及び記号を選択記入して下さい。</div>
+        {/* ===== 注意事項 + 報告者 ===== */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '3mm', marginBottom: '1mm' }}>
+          <div style={{ flex: 1, fontSize: '5.5pt', lineHeight: 1.5 }}>
+            <div>※作業内容・作業種別番号のつけ方は石綿に暴露されるか否かで判断し、その判断は石綿作業主任者が行って下さい。</div>
+            <div>※現場監督者・責任者の人も作業者欄に記入し記録を残して下さい（但し、石綿に暴露される業務を実施した人のみ。又、勤務表で管理される人は用紙記入期間は勤怠表には記入しないこと）</div>
+            <div>※健康状態確認は右上の表より番号及び記号を選択記入して下さい。</div>
+          </div>
+          <div style={{ border, minWidth: '32mm', padding: '0.5mm 2mm', textAlign: 'center' }}>
+            <div style={{ fontSize: '6pt', marginBottom: '1mm' }}>報告者</div>
+            <div style={{ height: '10mm' }} />
+          </div>
         </div>
 
         {/* ===== メイングリッド ===== */}

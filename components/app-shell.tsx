@@ -31,8 +31,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 p-2 space-y-0.5">
           <NavItem href="/" label="現場一覧" />
           <NavItem href="/masters" label="マスタ管理" />
-          <NavItem href="/sync" label="同期・ログ" />
         </nav>
+        <div className="p-2 border-t border-gray-700">
+          <NavItem href="/sync" label="同期・ログ" />
+        </div>
       </aside>
       <div className="flex-1 flex flex-col overflow-hidden">
         {children}
