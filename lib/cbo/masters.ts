@@ -37,9 +37,9 @@ export type CboReport = {
   overHour: number
   workContentId: string | null
   healthTypeId: string | null
-  companyUserId: string | null    // 自社員ワーカーID（top-level company_user_id）
-  supplierId: string | null       // 外注: sup_name (supplier id)
-  supplierStaffId: string | null  // 外注: sup_staff (staff id)
+  companyUserId: string | null    // 自社員: work_user キーの値
+  supplierId: string | null       // 外注: sup_name キーの値 (supplier id)
+  supplierStaffId: string | null  // 外注: sup_staff キーの値 (staff id)
 }
 
 // ===== 内部ユーティリティ =====
@@ -207,7 +207,39 @@ export async function listPartnerWorkers(): Promise<CboPartnerWorker[]> {
 }
 
 // ===== 出面一覧 =====
-// 実レスポンス: { data: [{ id, company_user_id, values: [{key, value, label}] }] }
+// 実レスポンス確認（T2.0疎通）:
+//   リスト GET /personal_daily_reports?format_id=4879&... → { data: [{ id, date, name, ... }] }
+//     ※ values は含まれない。id のみ有用。
+//   詳細 GET /personal_daily_reports/{id} → { data: { id, tree: ReportNode } }
+//     tree: root > report_section > [start_date, onsite, work_user, sup_name, sup_staff,
+//                                    day_yakan, over_hour, work_content, health_type]
+//   自社員: work_user.value[0].value = company_user_id (number)
+//   協力会社: sup_name.value[0].value = supplier_id, sup_staff.value[0].value = staff_id
+//   日付: start_date.value[0].label = "YYYY-MM-DD" (value は UTC datetime)
+
+type ReportVal = {
+  id: number
+  parent_id: number | null
+  key: string
+  value: unknown
+  label: string | null
+}
+
+type ReportNode = {
+  id: number
+  key: string
+  value: ReportVal[]
+  children?: ReportNode[]
+}
+
+function findReportNode(node: ReportNode, key: string): ReportNode | null {
+  if (node.key === key) return node
+  for (const child of node.children ?? []) {
+    const found = findReportNode(child, key)
+    if (found) return found
+  }
+  return null
+}
 
 export async function listAttendanceReports(
   orderId: string,
@@ -219,11 +251,55 @@ export async function listAttendanceReports(
     from: period.from,
     to: period.to,
   })
-  const res = await cboFetch<{
-    data: Array<{ id: number; company_user_id: number; values: CboValue[] }>
-  }>(`/personal_daily_reports?${params}`)
+  // リストエンドポイントは id のみ有用 → 詳細エンドポイントで tree を取得
+  const res = await cboFetch<{ data: Array<{ id: number }> }>(
+    `/personal_daily_reports?${params}`
+  )
 
-  return res.data.map(normalizeReport)
+  const reports: CboReport[] = []
+  for (const item of res.data) {
+    try {
+      const detail = await cboFetch<{ data: { id: number; tree: ReportNode } }>(
+        `/personal_daily_reports/${item.id}`
+      )
+      reports.push(normalizeDetailReport(detail.data))
+    } catch {
+      continue
+    }
+  }
+  return reports
+}
+
+// ===== 出面単体 =====
+
+export async function getAttendanceReport(reportId: string): Promise<CboReport> {
+  const res = await cboFetch<{ data: { id: number; tree: ReportNode } }>(
+    `/personal_daily_reports/${reportId}`
+  )
+  return normalizeDetailReport(res.data)
+}
+
+// ===== 内部: 出面詳細レスポンス正規化 =====
+
+function normalizeDetailReport(r: { id: number; tree: ReportNode }): CboReport {
+  const tree = r.tree
+  const getVal = (key: string): unknown =>
+    findReportNode(tree, key)?.value?.[0]?.value ?? null
+  const getLabel = (key: string): string | null =>
+    findReportNode(tree, key)?.value?.[0]?.label ?? null
+
+  return {
+    cboReportId: String(r.id),
+    cboOrderId: String(getVal('onsite') ?? ''),
+    date: getLabel('start_date') ?? '',  // label="YYYY-MM-DD", value=UTC datetime
+    dayYakanId: str(getVal('day_yakan')),
+    overHour: num(getVal('over_hour')),
+    workContentId: str(getVal('work_content')),
+    healthTypeId: str(getVal('health_type')),
+    companyUserId: str(getVal('work_user')),    // 自社員: work_user キー
+    supplierId: str(getVal('sup_name')),
+    supplierStaffId: str(getVal('sup_staff')),
+  }
 }
 
 // デバッグ用: CBO 出面の生レスポンスをそのまま返す（診断後に削除）
@@ -237,51 +313,13 @@ export async function listAttendanceReportsRaw(
     from: period.from,
     to: period.to,
   })
-  // リスト: 先頭1件の全フィールドを返す
   const res = await cboFetch<{ data: Array<Record<string, unknown>> }>(
     `/personal_daily_reports?${params}`
   )
   const firstId = res.data[0]?.id as number | undefined
-
-  // 詳細: 同じ1件を detail エンドポイントで取得して比較
   let detail: unknown = null
   if (firstId) {
     detail = await cboFetch(`/personal_daily_reports/${firstId}`)
   }
-
-  return {
-    listSample: res.data[0] ?? null,
-    detailSample: detail,
-  }
-}
-
-// ===== 出面単体 =====
-
-export async function getAttendanceReport(reportId: string): Promise<CboReport> {
-  const res = await cboFetch<{ id: number; company_user_id: number; values: CboValue[] }>(
-    `/personal_daily_reports/${reportId}`
-  )
-  return normalizeReport(res)
-}
-
-// ===== 内部: 出面レスポンス正規化 =====
-
-function normalizeReport(r: {
-  id: number
-  company_user_id: number
-  values: CboValue[]
-}): CboReport {
-  const vals = r.values ?? []
-  return {
-    cboReportId: String(r.id),
-    cboOrderId: String(extractVal(vals, 'onsite') ?? ''),
-    date: String(extractVal(vals, 'start_date') ?? ''),
-    dayYakanId: str(extractVal(vals, 'day_yakan')),
-    overHour: num(extractVal(vals, 'over_hour')),
-    workContentId: str(extractVal(vals, 'work_content')),
-    healthTypeId: str(extractVal(vals, 'health_type')),
-    companyUserId: str(r.company_user_id),
-    supplierId: str(extractVal(vals, 'sup_name')),
-    supplierStaffId: str(extractVal(vals, 'sup_staff')),
-  }
+  return { listSample: res.data[0] ?? null, detailSample: detail }
 }
