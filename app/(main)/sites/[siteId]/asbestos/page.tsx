@@ -4,21 +4,12 @@ import { useState, use } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { AsbestosGrid } from '@/components/asbestos-grid'
+import { AsbestosPrint } from '@/components/asbestos-print'
 import { SyncBar } from '@/components/sync-bar'
 import { formatMonth, addMonths, todayYearMonth } from '@/lib/utils/date'
 import type { Site } from '@/types/db'
 import type { ReportRow } from '@/types/frontend'
 
-const WORK_LEGEND = [
-  { id: '①', label: '準備工事' },
-  { id: '②', label: '石綿除去' },
-  { id: '③', label: '環境測定' },
-  { id: '④', label: '廃材処理' },
-  { id: '⑤', label: '養生撤去' },
-  { id: '⑥', label: '管理' },
-  { id: '⑦', label: '抜き取り' },
-  { id: '⑧', label: '分析' },
-]
 
 export default function AsbestosPage({
   params,
@@ -46,32 +37,17 @@ export default function AsbestosPage({
     r => r.sync_status === 'local_new' || r.sync_status === 'local_edited'
   ).length
 
-  const [y, m] = month.split('-').map(Number)
-  const periodLabel = period === 'first' ? `${y}年${m}月1日〜15日` : `${y}年${m}月16日〜月末`
-
   return (
     <div className="flex flex-col h-full">
-      {/* 印刷時のみ表示するヘッダ */}
-      <div className="hidden print:block p-4 mb-2 border-b-2 border-gray-800">
-        <h1 className="text-base font-bold text-center mb-2">石綿作業従事者作業記録</h1>
-        <div className="grid grid-cols-2 gap-x-8 text-xs">
-          <p>工事名称: {site?.name ?? ''}</p>
-          <p>管轄工事会社: {site?.client_name ?? ''}</p>
-          <p>工事期間: {site?.period_start ?? ''} 〜 {site?.period_end ?? ''}</p>
-          <p>現場責任者: {site?.manager_name ?? ''}</p>
-          <p>対象期間: {periodLabel}</p>
-        </div>
-        {/* 凡例 */}
-        <div className="mt-2 pt-2 border-t border-gray-300">
-          <p className="text-xs font-medium mb-1">作業内容:</p>
-          <div className="flex flex-wrap gap-x-4 text-xs">
-            {WORK_LEGEND.map(w => (
-              <span key={w.id}>{w.id} {w.label}</span>
-            ))}
-          </div>
-          <p className="text-xs mt-1">健康状態: 〇良好 ／ △やや不調 ／ ✖不調(作業禁止)</p>
-        </div>
-      </div>
+      {/* 印刷時のみ表示するフォーム */}
+      {site && (
+        <AsbestosPrint
+          site={site}
+          reports={reports}
+          month={month}
+          period={period}
+        />
+      )}
 
       {/* 通常ヘッダ（印刷時は非表示） */}
       <div className="px-5 py-3 bg-white border-b border-gray-200 print:hidden">
@@ -154,20 +130,22 @@ export default function AsbestosPage({
         />
       </div>
 
-      {/* Grid */}
-      {isLoading ? (
-        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm print:hidden">
-          読み込み中...
-        </div>
-      ) : (
-        <AsbestosGrid
-          siteId={siteId}
-          month={month}
-          period={period}
-          reports={reports}
-          onRefresh={() => qc.invalidateQueries({ queryKey: reportsKey })}
-        />
-      )}
+      {/* Grid（印刷時は非表示） */}
+      <div className="flex-1 overflow-hidden print:hidden">
+        {isLoading ? (
+          <div className="flex h-full items-center justify-center text-gray-400 text-sm">
+            読み込み中...
+          </div>
+        ) : (
+          <AsbestosGrid
+            siteId={siteId}
+            month={month}
+            period={period}
+            reports={reports}
+            onRefresh={() => qc.invalidateQueries({ queryKey: reportsKey })}
+          />
+        )}
+      </div>
     </div>
   )
 }
