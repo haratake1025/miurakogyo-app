@@ -31,6 +31,12 @@ const MIN_ROWS = 20
 const border = '1px solid black'
 const cellBase: React.CSSProperties = { border, padding: '0.5mm 1mm', lineHeight: 1.3 }
 
+function companyFontSize(name: string): string {
+  if (name.length > 15) return '4.5pt'
+  if (name.length > 10) return '5.5pt'
+  return '6.5pt'
+}
+
 function WorkerRow({
   no, worker, days, reportMap,
 }: {
@@ -42,7 +48,7 @@ function WorkerRow({
   return (
     <tr>
       <td style={{ ...cellBase, textAlign: 'center', fontSize: '6.5pt', width: '6mm' }}>{no}</td>
-      <td style={{ ...cellBase, fontSize: '6.5pt' }}>{worker.company_name}</td>
+      <td style={{ ...cellBase, fontSize: companyFontSize(worker.company_name) }}>{worker.company_name}</td>
       <td style={{ ...cellBase, fontSize: '6.5pt', whiteSpace: 'nowrap' }}>{worker.worker_name}</td>
       {days.map(day => {
         const r = reportMap.get(`${worker.id}_${day}`)
@@ -84,28 +90,12 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
   for (const r of reports) {
     if (!workerMap.has(r.worker_id)) workerMap.set(r.worker_id, r.worker)
   }
-  const employees = [...workerMap.values()]
-    .filter(w => w.source_kind === 'employee')
-    .sort((a, b) => a.worker_name.localeCompare(b.worker_name, 'ja'))
-  const partners = [...workerMap.values()]
-    .filter(w => w.source_kind === 'partner')
-    .sort((a, b) => {
-      const c = a.company_name.localeCompare(b.company_name, 'ja')
-      return c !== 0 ? c : a.worker_name.localeCompare(b.worker_name, 'ja')
-    })
+  const workers = [...workerMap.values()]
 
   const reportMap = new Map(reports.map(r => [`${r.worker_id}_${r.work_date}`, r]))
-  const totalWorkers = employees.length + partners.length
+  const totalWorkers = workers.length
   const blankRows = Math.max(0, MIN_ROWS - totalWorkers)
-  // No. + 所属会社名 + 作業者名 + (作業内容 + 健康状態) × days
   const colCount = 3 + days.length * 2
-
-  const sectionHeaderStyle: React.CSSProperties = {
-    ...cellBase,
-    backgroundColor: '#e8e8e8',
-    fontWeight: 'bold',
-    fontSize: '6.5pt',
-  }
 
   return (
     <div className="hidden print:block">
@@ -117,46 +107,16 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
       }}>
 
         {/* ===== タイトル行 ===== */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2mm' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8mm' }}>
-            <span style={{ fontSize: '13pt', fontWeight: 'bold' }}>石綿作業従事者作業記録</span>
-            <span style={{ fontSize: '11pt', fontWeight: 'bold' }}>{m}月　{periodLabel}</span>
-          </div>
-          {/* 凡例 */}
-          <div style={{ fontSize: '6pt', textAlign: 'left' }}>
-            <div style={{ fontWeight: 'bold', fontSize: '7pt', marginBottom: '1mm' }}>作業内容・作業種別番号</div>
-            <table style={{ borderCollapse: 'collapse', fontSize: '6pt' }}>
-              <tbody>
-                <tr>
-                  <td style={{ paddingRight: '4mm' }}>① 準備工事（足場・仮設構造物等）</td>
-                  <td>石綿板材処理</td>
-                </tr>
-                <tr>
-                  <td>② 石綿除去作業（外壁材・保温材）</td>
-                  <td>〇 健康状態確認：自己確認</td>
-                </tr>
-                <tr>
-                  <td>③ 作業の環境測定</td>
-                  <td>△ 養生・安全・品質管理</td>
-                </tr>
-                <tr>
-                  <td colSpan={2}>⑦ 抜き取り　⑧ 分析</td>
-                </tr>
-                <tr>
-                  <td colSpan={2} style={{ paddingTop: '0.5mm' }}>
-                    〇 体調良好　△ 体調やや不調　✖ 体調不調 → 作業禁止
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div style={{ marginBottom: '2mm' }}>
+          <span style={{ fontSize: '13pt', fontWeight: 'bold' }}>石綿作業従事者作業記録</span>
+          <span style={{ fontSize: '11pt', fontWeight: 'bold', marginLeft: '8mm' }}>{m}月　{periodLabel}</span>
         </div>
 
-        {/* ===== ヘッダ情報 ===== */}
+        {/* ===== ヘッダ情報（凡例を右端セルに配置） ===== */}
         <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: '1mm' }}>
           <tbody>
             <tr>
-              <td style={{ ...cellBase, width: '35%', verticalAlign: 'top' }}>
+              <td style={{ ...cellBase, width: '22%', verticalAlign: 'top' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '6pt' }}>管轄工事会社:</div>
                 <div style={{ fontSize: '8pt', marginTop: '1mm' }}>{site.client_name ?? '　'}</div>
               </td>
@@ -169,9 +129,32 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                   <strong>現場責任者:</strong> {site.manager_name ?? '　'}
                 </div>
               </td>
-              <td style={{ ...cellBase, width: '18mm', textAlign: 'center', verticalAlign: 'top' }}>
-                <div style={{ fontSize: '6pt', marginBottom: '1mm' }}>報告者</div>
-                <div style={{ border, height: '12mm', width: '14mm', margin: '0 auto' }} />
+              <td style={{ ...cellBase, width: '42%', verticalAlign: 'top', fontSize: '6pt' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '7pt', marginBottom: '1mm' }}>作業内容・作業種別番号</div>
+                <table style={{ borderCollapse: 'collapse', fontSize: '6pt', width: '100%' }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ paddingRight: '2mm' }}>① 準備工事（足場・仮設構造物等）</td>
+                      <td>石綿板材処理</td>
+                    </tr>
+                    <tr>
+                      <td>② 石綿除去作業（外壁材・保温材）</td>
+                      <td>〇 健康状態確認：自己確認</td>
+                    </tr>
+                    <tr>
+                      <td>③ 作業の環境測定</td>
+                      <td>△ 養生・安全・品質管理</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={2}>⑦ 抜き取り　⑧ 分析</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={2} style={{ paddingTop: '0.5mm' }}>
+                        〇 体調良好　△ 体調やや不調　✖ 体調不調 → 作業禁止
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </td>
             </tr>
           </tbody>
@@ -188,8 +171,8 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
         <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '6mm' }} />
-            <col style={{ width: '34mm' }} />
-            <col style={{ width: '22mm' }} />
+            <col style={{ width: '28mm' }} />
+            <col style={{ width: '28mm' }} />
             {days.map(d => (
               <Fragment key={d}>
                 <col style={{ width: '8mm' }} />
@@ -233,23 +216,9 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
             </tr>
           </thead>
           <tbody>
-            {/* 石綿作業主任者（自社員）セクション */}
-            <tr>
-              <td colSpan={colCount} style={sectionHeaderStyle}>石綿作業主任者</td>
-            </tr>
-            {employees.map((w, i) => (
+            {workers.map((w, i) => (
               <WorkerRow key={w.id} no={i + 1} worker={w} days={days} reportMap={reportMap} />
             ))}
-
-            {/* 石綿作業従事者（協力会社）セクション */}
-            <tr>
-              <td colSpan={colCount} style={sectionHeaderStyle}>石綿作業従事者</td>
-            </tr>
-            {partners.map((w, i) => (
-              <WorkerRow key={w.id} no={employees.length + i + 1} worker={w} days={days} reportMap={reportMap} />
-            ))}
-
-            {/* 空白行 */}
             {Array.from({ length: blankRows }).map((_, i) => (
               <BlankRow key={i} no={totalWorkers + i + 1} colCount={colCount} />
             ))}
