@@ -82,7 +82,7 @@ export default function MastersPage() {
   const partners = workers.filter(w => w.source_kind === 'partner')
 
   return (
-    <div className="p-6">
+    <div className="p-6 overflow-y-auto flex-1">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">マスタ管理</h1>
         <button
