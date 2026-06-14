@@ -242,33 +242,50 @@ function findReportNode(node: ReportNode, key: string): ReportNode | null {
   return null
 }
 
-// siteName: DB の sites.name（onsite.label と照合してフィルタ）
+// siteName: DB の sites.name（リストの order_titles と照合してフィルタ）
 // order_id フィルタは CBO 内部 ID の不一致で誤データを引くため使わない
+// 方式: リスト1〜N ページ取得 → order_titles で現場名絞り込み → 絞り込んだ件数分だけ詳細API
 export async function listAttendanceReports(
   siteName: string,
   period: { from: string; to: string }
 ): Promise<CboReport[]> {
-  const params = new URLSearchParams({
-    format_id: '4879',
-    from: period.from,
-    to: period.to,
-  })
-  // リストエンドポイントは id のみ有用 → 詳細エンドポイントで tree を取得
-  const res = await cboFetch<{ data: Array<{ id: number }> }>(
-    `/personal_daily_reports?${params}`
+  // 1. リスト全件取得（ページネーション対応）
+  type ListItem = { id: number; order_titles: string[] }
+  const allItems: ListItem[] = []
+  let page = 1
+  let lastPage = 1
+
+  do {
+    const params = new URLSearchParams({
+      format_id: '4879',
+      from: period.from,
+      to: period.to,
+      per_page: '100',
+      page: String(page),
+    })
+    const res = await cboFetch<{
+      data: ListItem[]
+      meta?: { last_page: number }
+    }>(`/personal_daily_reports?${params}`)
+    allItems.push(...(res.data ?? []))
+    lastPage = res.meta?.last_page ?? 1
+    page++
+  } while (page <= lastPage)
+
+  // 2. order_titles で現場名フィルタ（詳細API呼び出し前に絞り込む）
+  const trimmedName = siteName.trim()
+  const matched = allItems.filter(item =>
+    item.order_titles?.some(t => t.trim() === trimmedName)
   )
 
+  // 3. 絞り込んだ件数分だけ詳細API呼び出し → tree から正規化
   const reports: CboReport[] = []
-  for (const item of res.data) {
+  for (const item of matched) {
     try {
       const detail = await cboFetch<{ data: { id: number; tree: ReportNode } }>(
         `/personal_daily_reports/${item.id}`
       )
-      const report = normalizeDetailReport(detail.data)
-      // 現場名で絞り込み（trim で前後空白の差異を吸収）
-      if (report.cboOrderName?.trim() === siteName.trim()) {
-        reports.push(report)
-      }
+      reports.push(normalizeDetailReport(detail.data))
     } catch {
       continue
     }
