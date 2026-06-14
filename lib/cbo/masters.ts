@@ -226,27 +226,33 @@ export async function listAttendanceReports(
   return res.data.map(normalizeReport)
 }
 
-// デバッグ用: CBO 出面の生フィールドを返す（worker ID 解決問題の診断後に削除）
+// デバッグ用: CBO 出面の生レスポンスをそのまま返す（診断後に削除）
 export async function listAttendanceReportsRaw(
   orderId: string,
   period: { from: string; to: string }
-): Promise<Array<{ id: number; company_user_id: unknown; valueKeys: string[]; valueSnapshot: Record<string, unknown> }>> {
+): Promise<{ listSample: unknown; detailSample: unknown }> {
   const params = new URLSearchParams({
     format_id: '4879',
     order_id: orderId,
     from: period.from,
     to: period.to,
   })
-  const res = await cboFetch<{
-    data: Array<{ id: number; company_user_id: unknown; values: CboValue[] }>
-  }>(`/personal_daily_reports?${params}`)
+  // リスト: 先頭1件の全フィールドを返す
+  const res = await cboFetch<{ data: Array<Record<string, unknown>> }>(
+    `/personal_daily_reports?${params}`
+  )
+  const firstId = res.data[0]?.id as number | undefined
 
-  return res.data.slice(0, 5).map(r => ({
-    id: r.id,
-    company_user_id: r.company_user_id,
-    valueKeys: (r.values ?? []).map(v => v.key),
-    valueSnapshot: Object.fromEntries((r.values ?? []).map(v => [v.key, v.value])),
-  }))
+  // 詳細: 同じ1件を detail エンドポイントで取得して比較
+  let detail: unknown = null
+  if (firstId) {
+    detail = await cboFetch(`/personal_daily_reports/${firstId}`)
+  }
+
+  return {
+    listSample: res.data[0] ?? null,
+    detailSample: detail,
+  }
 }
 
 // ===== 出面単体 =====
