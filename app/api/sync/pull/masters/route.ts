@@ -81,7 +81,8 @@ export async function POST(req: NextRequest) {
         .map(r => ({ ...r, id: existingMap.get(r.cbo_company_user_id!)! }))
 
       if (toInsert.length) {
-        const { error } = await supabase.from('workers').insert(toInsert)
+        // ignoreDuplicates: ON CONFLICT DO NOTHING（partial index でも機能）
+        const { error } = await supabase.from('workers').upsert(toInsert, { ignoreDuplicates: true })
         if (error) throw new Error(error.message)
       }
       if (toUpdate.length) {
@@ -113,7 +114,8 @@ export async function POST(req: NextRequest) {
         .map(r => ({ ...r, id: existingMap.get(key(r))! }))
 
       if (toInsert.length) {
-        const { error } = await supabase.from('workers').insert(toInsert)
+        // ignoreDuplicates: ON CONFLICT DO NOTHING（partial index でも機能）
+        const { error } = await supabase.from('workers').upsert(toInsert, { ignoreDuplicates: true })
         if (error) throw new Error(error.message)
       }
       if (toUpdate.length) {
