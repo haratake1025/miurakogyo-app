@@ -46,7 +46,7 @@ function WorkerRow({
   reportMap: Map<string, ReportRow>
 }) {
   return (
-    <tr>
+    <tr style={{ height: '10mm' }}>
       <td style={{ ...cellBase, textAlign: 'center', fontSize: '6.5pt', width: '6mm' }}>{no}</td>
       <td style={{ ...cellBase, fontSize: companyFontSize(worker.company_name) }}>{worker.company_name}</td>
       <td style={{ ...cellBase, fontSize: '6.5pt', whiteSpace: 'nowrap' }}>{worker.worker_name}</td>
@@ -56,8 +56,8 @@ function WorkerRow({
         const ht = r?.health_type_id ? (HEALTH_SHORT[r.health_type_id] ?? '') : ''
         return (
           <Fragment key={day}>
-            <td style={{ ...cellBase, textAlign: 'center', width: '8mm' }}>{wc}</td>
-            <td style={{ ...cellBase, textAlign: 'center', width: '8mm' }}>{ht}</td>
+            <td style={{ ...cellBase, textAlign: 'center', width: '8mm', fontSize: '10pt' }}>{wc}</td>
+            <td style={{ ...cellBase, textAlign: 'center', width: '8mm', fontSize: '10pt' }}>{ht}</td>
           </Fragment>
         )
       })}
@@ -67,7 +67,7 @@ function WorkerRow({
 
 function BlankRow({ no, colCount }: { no: number; colCount: number }) {
   return (
-    <tr style={{ height: '6.5mm' }}>
+    <tr style={{ height: '10mm' }}>
       <td style={{ ...cellBase, textAlign: 'center', fontSize: '6.5pt' }}>{no}</td>
       {Array.from({ length: colCount - 1 }).map((_, i) => (
         <td key={i} style={cellBase} />
@@ -179,8 +179,8 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
         <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '6mm' }} />
-            <col style={{ width: '28mm' }} />
-            <col style={{ width: '28mm' }} />
+            <col style={{ width: '17mm' }} />
+            <col style={{ width: '17mm' }} />
             {days.map(d => (
               <Fragment key={d}>
                 <col style={{ width: '8mm' }} />
