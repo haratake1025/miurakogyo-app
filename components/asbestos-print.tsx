@@ -168,9 +168,9 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
             <div>※現場監督者・責任者の人も作業者欄に記入し記録を残して下さい（但し、石綿に暴露される業務を実施した人のみ。又、勤務表で管理される人は用紙記入期間は勤怠表には記入しないこと）</div>
             <div>※健康状態確認は右上の表より番号及び記号を選択記入して下さい。</div>
           </div>
-          <div style={{ border, minWidth: '32mm', padding: '0.5mm 2mm', textAlign: 'center' }}>
-            <div style={{ fontSize: '6pt', marginBottom: '1mm' }}>報告者</div>
-            <div style={{ height: '10mm' }} />
+          <div style={{ border, padding: '1mm 2mm', display: 'flex', alignItems: 'center', gap: '2mm', minWidth: '48mm' }}>
+            <span style={{ fontSize: '6pt', whiteSpace: 'nowrap' }}>報告者:</span>
+            <div style={{ flex: 1, borderBottom: '1px solid black', height: '4mm' }} />
           </div>
         </div>
 
