@@ -8,7 +8,7 @@ import type { Site } from '@/types/db'
 
 export default function SiteListPage() {
   const qc = useQueryClient()
-  const [query, setQuery] = useState('')
+  const [nameFilter, setNameFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
   const { data: sites = [], isLoading } = useQuery<Site[]>({
@@ -30,7 +30,11 @@ export default function SiteListPage() {
     onError: () => toast.error('マスタ取込に失敗しました'),
   })
 
-  // ステータス選択肢（取込済みデータから動的生成）
+  // 選択肢（取込済みデータから動的生成）
+  const nameOptions = useMemo(() => {
+    return Array.from(new Set(sites.map(s => s.name))).sort()
+  }, [sites])
+
   const statusOptions = useMemo(() => {
     const set = new Set(sites.map(s => s.cbo_status).filter(Boolean) as string[])
     return Array.from(set).sort()
@@ -38,17 +42,12 @@ export default function SiteListPage() {
 
   // フィルタ適用
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
     return sites.filter(site => {
+      if (nameFilter && site.name !== nameFilter) return false
       if (statusFilter && site.cbo_status !== statusFilter) return false
-      if (!q) return true
-      return (
-        site.name.toLowerCase().includes(q) ||
-        (site.client_name ?? '').toLowerCase().includes(q) ||
-        (site.manager_name ?? '').toLowerCase().includes(q)
-      )
+      return true
     })
-  }, [sites, query, statusFilter])
+  }, [sites, nameFilter, statusFilter])
 
   return (
     <div className="flex flex-col h-full">
@@ -67,13 +66,16 @@ export default function SiteListPage() {
 
         {/* 検索・フィルタ */}
         <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="現場名 / 管轄 / 責任者で検索..."
-            className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-          />
+          <select
+            value={nameFilter}
+            onChange={e => setNameFilter(e.target.value)}
+            className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+          >
+            <option value="">全現場</option>
+            {nameOptions.map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
@@ -84,9 +86,9 @@ export default function SiteListPage() {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          {(query || statusFilter) && (
+          {(nameFilter || statusFilter) && (
             <button
-              onClick={() => { setQuery(''); setStatusFilter('') }}
+              onClick={() => { setNameFilter(''); setStatusFilter('') }}
               className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1.5 rounded hover:bg-gray-100 whitespace-nowrap"
             >
               クリア
