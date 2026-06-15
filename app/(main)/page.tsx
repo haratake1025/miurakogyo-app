@@ -8,7 +8,10 @@ import type { Site } from '@/types/db'
 
 export default function SiteListPage() {
   const qc = useQueryClient()
-  const [nameFilter, setNameFilter] = useState('')
+  const [nameQuery, setNameQuery] = useState('')
+  const [clientFilter, setClientFilter] = useState('')
+  const [managerFilter, setManagerFilter] = useState('')
+  const [asbestosFilter, setAsbestosFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
   const { data: sites = [], isLoading } = useQuery<Site[]>({
@@ -31,23 +34,26 @@ export default function SiteListPage() {
   })
 
   // 選択肢（取込済みデータから動的生成）
-  const nameOptions = useMemo(() => {
-    return Array.from(new Set(sites.map(s => s.name))).sort()
+  const clientOptions = useMemo(() => {
+    return Array.from(new Set(sites.map(s => s.client_name).filter(Boolean) as string[])).sort()
   }, [sites])
 
-  const statusOptions = useMemo(() => {
-    const set = new Set(sites.map(s => s.cbo_status).filter(Boolean) as string[])
-    return Array.from(set).sort()
+  const managerOptions = useMemo(() => {
+    return Array.from(new Set(sites.map(s => s.manager_name).filter(Boolean) as string[])).sort()
   }, [sites])
 
   // フィルタ適用
   const filtered = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase()
     return sites.filter(site => {
-      if (nameFilter && site.name !== nameFilter) return false
+      if (q && !site.name.toLowerCase().includes(q)) return false
+      if (clientFilter && site.client_name !== clientFilter) return false
+      if (managerFilter && site.manager_name !== managerFilter) return false
+      if (asbestosFilter !== '' && String(site.is_asbestos) !== asbestosFilter) return false
       if (statusFilter && site.cbo_status !== statusFilter) return false
       return true
     })
-  }, [sites, nameFilter, statusFilter])
+  }, [sites, nameQuery, clientFilter, managerFilter, asbestosFilter, statusFilter])
 
   return (
     <div className="flex flex-col h-full">
@@ -65,16 +71,42 @@ export default function SiteListPage() {
         </div>
 
         {/* 検索・フィルタ */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={nameQuery}
+            onChange={e => setNameQuery(e.target.value)}
+            placeholder="現場名で検索..."
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 min-w-40"
+          />
           <select
-            value={nameFilter}
-            onChange={e => setNameFilter(e.target.value)}
-            className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+            value={clientFilter}
+            onChange={e => setClientFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white min-w-28"
           >
-            <option value="">全現場</option>
-            {nameOptions.map(n => (
-              <option key={n} value={n}>{n}</option>
+            <option value="">全管轄</option>
+            {clientOptions.map(c => (
+              <option key={c} value={c}>{c}</option>
             ))}
+          </select>
+          <select
+            value={managerFilter}
+            onChange={e => setManagerFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white min-w-28"
+          >
+            <option value="">全責任者</option>
+            {managerOptions.map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <select
+            value={asbestosFilter}
+            onChange={e => setAsbestosFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+          >
+            <option value="">石綿 全て</option>
+            <option value="true">石綿あり</option>
+            <option value="false">石綿なし</option>
           </select>
           <select
             value={statusFilter}
@@ -82,13 +114,12 @@ export default function SiteListPage() {
             className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white min-w-28"
           >
             <option value="">全ステータス</option>
-            {statusOptions.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
+            <option value="工事中">工事中</option>
+            <option value="完工">完工</option>
           </select>
-          {(nameFilter || statusFilter) && (
+          {(nameQuery || clientFilter || managerFilter || asbestosFilter || statusFilter) && (
             <button
-              onClick={() => { setNameFilter(''); setStatusFilter('') }}
+              onClick={() => { setNameQuery(''); setClientFilter(''); setManagerFilter(''); setAsbestosFilter(''); setStatusFilter('') }}
               className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1.5 rounded hover:bg-gray-100 whitespace-nowrap"
             >
               クリア
