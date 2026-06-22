@@ -10,7 +10,6 @@ export async function GET() {
   const { data, error } = await supabase
     .from('sites')
     .select('*')
-    .eq('is_active', true)
     .order('name')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
