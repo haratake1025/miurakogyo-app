@@ -88,28 +88,6 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   const [isDragging, setIsDragging] = useState(false)
   const [showBulkEdit, setShowBulkEdit] = useState(false)
 
-  // Worker order: maintained as an array of IDs (追加順、手動並び替え可)
-  const [workerOrder, setWorkerOrder] = useState<string[]>(() => {
-    const seen = new Set<string>()
-    const order: string[] = []
-    for (const r of reports) {
-      if (!seen.has(r.worker_id)) { seen.add(r.worker_id); order.push(r.worker_id) }
-    }
-    return order
-  })
-
-  // Sync workerOrder when reports refresh (append newly discovered workers)
-  useEffect(() => {
-    setWorkerOrder(prev => {
-      const existing = new Set(prev)
-      const toAdd: string[] = []
-      for (const r of reports) {
-        if (!existing.has(r.worker_id)) { existing.add(r.worker_id); toAdd.push(r.worker_id) }
-      }
-      return toAdd.length === 0 ? prev : [...prev, ...toAdd]
-    })
-  }, [reports])
-
   // Map of all available workers (reports + manually added)
   const allWorkerMap = useMemo(() => {
     const map = new Map<string, WorkerSummary>()
@@ -122,51 +100,18 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
     return map
   }, [reports, extraWorkers])
 
-  // allWorkers in display order (workerOrder filters out stale IDs)
-  const allWorkers = workerOrder
-    .map(id => allWorkerMap.get(id))
-    .filter((w): w is WorkerSummary => w !== undefined)
+  // allWorkers: 所属（company_name）→ 作業者名の順で自動ソート
+  const allWorkers = useMemo(() =>
+    [...allWorkerMap.values()].sort((a, b) => {
+      const co = (a.company_name ?? '').localeCompare(b.company_name ?? '', 'ja')
+      if (co !== 0) return co
+      return a.worker_name.localeCompare(b.worker_name, 'ja')
+    }),
+    [allWorkerMap]
+  )
 
   const reportMap = new Map(reports.map(r => [`${r.worker_id}_${r.work_date}`, r]))
   const excludeIds = allWorkers.map(w => w.id)
-
-  // --- Drag & drop for row reorder ---
-  const [rowDragOverIdx, setRowDragOverIdx] = useState<number | null>(null)
-  const rowDragSrcIdxRef = useRef<number | null>(null)
-
-  function handleRowDragStart(wIdx: number, e: React.DragEvent) {
-    rowDragSrcIdxRef.current = wIdx
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  function handleRowDragOver(wIdx: number, e: React.DragEvent) {
-    e.preventDefault()
-    if (rowDragSrcIdxRef.current !== null && rowDragSrcIdxRef.current !== wIdx) {
-      setRowDragOverIdx(wIdx)
-    }
-  }
-
-  function handleRowDrop(toIdx: number, e: React.DragEvent) {
-    e.preventDefault()
-    const fromIdx = rowDragSrcIdxRef.current
-    if (fromIdx === null || fromIdx === toIdx) {
-      setRowDragOverIdx(null)
-      return
-    }
-    setWorkerOrder(prev => {
-      const next = [...prev]
-      const [removed] = next.splice(fromIdx, 1)
-      next.splice(toIdx, 0, removed)
-      return next
-    })
-    setRowDragOverIdx(null)
-    rowDragSrcIdxRef.current = null
-  }
-
-  function handleRowDragEnd() {
-    setRowDragOverIdx(null)
-    rowDragSrcIdxRef.current = null
-  }
 
   // --- Cell selection helpers ---
   const hasDraggedRef = useRef(false)
@@ -575,24 +520,11 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
             {allWorkers.map((worker, wIdx) => (
               <tr
                 key={worker.id}
-                onDragOver={e => handleRowDragOver(wIdx, e)}
-                onDrop={e => handleRowDrop(wIdx, e)}
-                onDragEnd={handleRowDragEnd}
-                className={`hover:bg-gray-50/50 ${rowDragOverIdx === wIdx ? 'border-t-2 border-t-blue-500' : ''}`}
+                className="hover:bg-gray-50/50"
               >
-                {/* Worker name cell — draggable handle for row reorder */}
-                <td
-                  draggable
-                  onDragStart={e => handleRowDragStart(wIdx, e)}
-                  className="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-1.5 whitespace-nowrap cursor-grab active:cursor-grabbing"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-300 text-xs select-none shrink-0" title="ドラッグで並び替え">⠿</span>
-                    <div className="min-w-0">
-                      <div className="text-gray-400 text-xs leading-tight">{worker.company_name}</div>
-                      <div className="font-medium text-gray-900">{worker.worker_name}</div>
-                    </div>
-                  </div>
+                <td className="sticky left-0 z-10 bg-white border border-gray-200 px-3 py-1.5 whitespace-nowrap">
+                  <div className="text-gray-400 text-xs leading-tight">{worker.company_name}</div>
+                  <div className="font-medium text-gray-900">{worker.worker_name}</div>
                 </td>
                 {days.map((day, dIdx) => {
                   const report = reportMap.get(`${worker.id}_${day}`)
@@ -669,12 +601,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
         <AddWorkerModal
           excludeWorkerIds={excludeIds}
           onAdd={workers => {
-            const newIds = workers.map(w => w.id)
             setExtraWorkers(prev => [...prev, ...workers])
-            setWorkerOrder(prev => {
-              const existing = new Set(prev)
-              return [...prev, ...newIds.filter(id => !existing.has(id))]
-            })
             setShowAddModal(false)
           }}
           onClose={() => setShowAddModal(false)}
