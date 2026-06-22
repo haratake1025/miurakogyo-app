@@ -106,12 +106,25 @@ export async function listSites(): Promise<CboSite[]> {
 }
 
 // ===== 社員一覧 =====
-// 実レスポンス: { data: [{ id, full_name, full_name_kana, tel, withdrawn_at, ... }] }
+// 実レスポンス: { data: [{ id, full_name, full_name_kana, tel, withdrawn_at, ... }], meta: { last_page } }
 
 export async function listEmployees(): Promise<CboEmployee[]> {
-  const res = await cboFetch<{ data: Array<Record<string, unknown>> }>('/users')
+  type UserItem = Record<string, unknown>
+  const allUsers: UserItem[] = []
+  let page = 1
+  let lastPage = 1
 
-  return res.data
+  do {
+    const res = await cboFetch<{
+      data: UserItem[]
+      meta?: { last_page: number }
+    }>(`/users?per_page=100&page=${page}`)
+    allUsers.push(...(res.data ?? []))
+    lastPage = res.meta?.last_page ?? 1
+    page++
+  } while (page <= lastPage)
+
+  return allUsers
     .filter((u) => !u['is_withdrawed'] && !u['withdrawn_at'] && !u['deleted_at'])
     .map((u) => ({
       cboCompanyUserId: String(u['id']),
