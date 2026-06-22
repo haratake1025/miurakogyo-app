@@ -13,6 +13,7 @@ export default function SiteListPage() {
   const [managerFilter, setManagerFilter] = useState('')
   const [asbestosFilter, setAsbestosFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [importResult, setImportResult] = useState<{ sites: { inserted: number; updated: number }; workers: number } | null>(null)
 
   const { data: sites = [], isLoading } = useQuery<Site[]>({
     queryKey: ['sites'],
@@ -23,14 +24,14 @@ export default function SiteListPage() {
     mutationFn: () =>
       fetch('/api/sync/pull/masters', { method: 'POST' }).then(r => r.json()),
     onSuccess: (data) => {
-      const s = data.sites
-      const sitePart = s
-        ? `現場 新規${s.inserted}件・更新${s.updated}件`
-        : '現場取込完了'
-      toast.success(`マスタ取込完了: ${sitePart}`)
+      setImportResult(data)
+      toast.success(
+        `取込完了: 現場 新規${data.sites?.inserted ?? 0}件・更新${data.sites?.updated ?? 0}件 / 作業者${data.workers ?? 0}件`,
+        { duration: 10000 }
+      )
       qc.invalidateQueries({ queryKey: ['sites'] })
     },
-    onError: () => toast.error('マスタ取込に失敗しました'),
+    onError: () => toast.error('マスタ取込に失敗しました', { duration: 8000 }),
   })
 
   // 選択肢（取込済みデータから動的生成）
@@ -61,13 +62,20 @@ export default function SiteListPage() {
       <div className="px-6 py-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-bold">現場一覧</h1>
-          <button
-            onClick={() => pullMasters.mutate()}
-            disabled={pullMasters.isPending}
-            className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
-          >
-            {pullMasters.isPending ? '取込中...' : 'CBOから取込（マスタ）'}
-          </button>
+          <div className="flex items-center gap-2">
+            {importResult && !pullMasters.isPending && (
+              <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1 whitespace-nowrap">
+                完了: 現場 新規{importResult.sites.inserted}件・更新{importResult.sites.updated}件 / 作業者{importResult.workers}件
+              </span>
+            )}
+            <button
+              onClick={() => { setImportResult(null); pullMasters.mutate() }}
+              disabled={pullMasters.isPending}
+              className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
+            >
+              {pullMasters.isPending ? '取込中...' : 'CBOから取込（マスタ）'}
+            </button>
+          </div>
         </div>
 
         {/* 検索・フィルタ */}
