@@ -13,6 +13,7 @@ type Props = {
 export function AddWorkerModal({ excludeWorkerIds, onAdd, onClose }: Props) {
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [companyQuery, setCompanyQuery] = useState('')
 
   const { data: workers, isLoading } = useQuery<Worker[]>({
     queryKey: ['workers'],
@@ -33,6 +34,11 @@ export function AddWorkerModal({ excludeWorkerIds, onAdd, onClose }: Props) {
       ),
     [available]
   )
+
+  const filteredCompanies = useMemo(() => {
+    const q = companyQuery.trim()
+    return q ? companies.filter(c => c.includes(q)) : companies
+  }, [companies, companyQuery])
 
   // 選択中の会社の作業者
   const workersInCompany = useMemo(
@@ -75,6 +81,7 @@ export function AddWorkerModal({ excludeWorkerIds, onAdd, onClose }: Props) {
 
   function handleBack() {
     setSelectedCompany(null)
+    setCompanyQuery('')
   }
 
   const allInCompanySelected =
@@ -111,21 +118,35 @@ export function AddWorkerModal({ excludeWorkerIds, onAdd, onClose }: Props) {
                 {(workers?.length ?? 0) === 0 ? 'マスタ取込が必要です' : '追加できる作業者がいません'}
               </p>
             ) : (
-              <div className="overflow-y-auto max-h-72 border border-gray-200 rounded">
-                {companies.map(company => {
-                  const count = available.filter(w => w.company_name === company).length
-                  return (
-                    <button
-                      key={company}
-                      onClick={() => setSelectedCompany(company)}
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 text-left"
-                    >
-                      <span className="text-sm text-gray-900">{company}</span>
-                      <span className="text-xs text-gray-400">{count}名 ›</span>
-                    </button>
-                  )
-                })}
-              </div>
+              <>
+                <input
+                  type="text"
+                  value={companyQuery}
+                  onChange={e => setCompanyQuery(e.target.value)}
+                  placeholder="会社名で検索..."
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  autoFocus
+                />
+                <div className="overflow-y-auto max-h-64 border border-gray-200 rounded">
+                  {filteredCompanies.length === 0 ? (
+                    <p className="py-6 text-center text-gray-400 text-sm">該当する会社がありません</p>
+                  ) : (
+                    filteredCompanies.map(company => {
+                      const count = available.filter(w => w.company_name === company).length
+                      return (
+                        <button
+                          key={company}
+                          onClick={() => setSelectedCompany(company)}
+                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 text-left"
+                        >
+                          <span className="text-sm text-gray-900">{company}</span>
+                          <span className="text-xs text-gray-400">{count}名 ›</span>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </>
             )}
           </>
         )}
