@@ -44,6 +44,17 @@ export async function POST(req: NextRequest) {
         .upsert(siteRows, { onConflict: 'cbo_order_id' })
 
       if (error) throw new Error(error.message)
+
+      // CBO に存在しなくなった現場を非活性化（削除ではなく is_active = false）
+      const { error: deactivateError } = await supabase
+        .from('sites')
+        .update({ is_active: false })
+        .eq('is_active', true)
+        .not('cbo_order_id', 'is', null)
+        .not('cbo_order_id', 'in', `(${cboIds.join(',')})`)
+
+      if (deactivateError) throw new Error(deactivateError.message)
+
       result.sites = { inserted: insertCount, updated: updateCount }
 
       await supabase.from('sync_logs').insert({
