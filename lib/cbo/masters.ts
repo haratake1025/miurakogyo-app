@@ -72,13 +72,24 @@ function num(v: unknown): number {
 
 export async function listSites(): Promise<CboSite[]> {
   const viewId = process.env.CBO_ORDER_VIEW_ID ?? '8440'
-  const res = await cboFetch<{
-    data: Array<{ id: number; title?: string; values: CboValue[]; status?: { name: string } }>
-  }>(`/order_custom_views/${viewId}/orders`)
 
-  return res.data.map((o) => {
+  type OrderItem = { id: number; title?: string; values: CboValue[]; status?: { name: string } }
+  const allOrders: OrderItem[] = []
+  let page = 1
+  let lastPage = 1
+
+  do {
+    const res = await cboFetch<{
+      data: OrderItem[]
+      meta?: { last_page: number }
+    }>(`/order_custom_views/${viewId}/orders?per_page=100&page=${page}`)
+    allOrders.push(...(res.data ?? []))
+    lastPage = res.meta?.last_page ?? 1
+    page++
+  } while (page <= lastPage)
+
+  return allOrders.map((o) => {
     const asbests = extractVal(o.values, 'asbests')
-    // title が案件リストで表示・編集される名称。contract_name はカスタム項目で更新漏れがある
     const name = o.title?.trim()
       || String(extractVal(o.values, 'contract_name') ?? '').trim()
     return {
