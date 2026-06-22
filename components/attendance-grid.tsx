@@ -185,6 +185,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   stateRef.current = { selection, clipboard, allWorkers, days, reportMap, editing, showBulkEdit }
 
   const pasteMutateRef = useRef<((cells: BulkCellPayload[]) => void) | null>(null)
+  const deleteMutateRef = useRef<((ids: string[]) => void) | null>(null)
 
   const pasteMutation = useMutation({
     mutationFn: async (cells: BulkCellPayload[]) => {
@@ -208,6 +209,26 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
     onError: (e: Error) => toast.error(e.message),
   })
   pasteMutateRef.current = pasteMutation.mutate
+
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch('/api/reports/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'エラー')
+      return data as { deleted: number }
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.deleted}件削除しました`)
+      setSelection(null)
+      onRefresh()
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+  deleteMutateRef.current = deleteMutation.mutate
 
   // End cell-selection drag on global mouseup
   useEffect(() => {
@@ -256,6 +277,22 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
         }
         setClipboard({ rows: maxW - minW + 1, cols: maxD - minD + 1, grid })
         toast.success(`${(maxW - minW + 1) * (maxD - minD + 1)}件をコピーしました`)
+        e.preventDefault()
+        return
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const { minW, maxW, minD, maxD } = selectionRange(selection)
+        const ids: string[] = []
+        for (let wi = minW; wi <= maxW; wi++) {
+          for (let di = minD; di <= maxD; di++) {
+            const r = reportMap.get(`${allWorkers[wi]?.id}_${days[di]}`)
+            if (r) ids.push(r.id)
+          }
+        }
+        if (ids.length === 0) return
+        if (!window.confirm(`${ids.length}件の出面記録を削除しますか？`)) return
+        deleteMutateRef.current?.(ids)
         e.preventDefault()
         return
       }
@@ -408,6 +445,26 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
       })()
     : 0
 
+  const selectedReportIds = selection
+    ? (() => {
+        const { minW, maxW, minD, maxD } = selectionRange(selection)
+        const ids: string[] = []
+        for (let wi = minW; wi <= maxW; wi++) {
+          for (let di = minD; di <= maxD; di++) {
+            const r = reportMap.get(`${allWorkers[wi]?.id}_${days[di]}`)
+            if (r) ids.push(r.id)
+          }
+        }
+        return ids
+      })()
+    : []
+
+  function handleDeleteToolbar() {
+    if (selectedReportIds.length === 0) return
+    if (!window.confirm(`${selectedReportIds.length}件の出面記録を削除しますか？`)) return
+    deleteMutation.mutate(selectedReportIds)
+  }
+
   const bulkCells: BulkCell[] = selection
     ? (() => {
         const { minW, maxW, minD, maxD } = selectionRange(selection)
@@ -449,6 +506,15 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
                 className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
               >
                 貼り付け
+              </button>
+            )}
+            {selectedReportIds.length > 0 && (
+              <button
+                onClick={handleDeleteToolbar}
+                disabled={deleteMutation.isPending}
+                className="text-sm px-3 py-1.5 border border-red-300 text-red-600 rounded hover:bg-red-50 disabled:opacity-50"
+              >
+                削除（{selectedReportIds.length}件）
               </button>
             )}
             <button

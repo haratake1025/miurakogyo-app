@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient()
 
-  // Batch fetch sync_status to avoid N+1 per UPDATE
   const existingIds = cells.filter(c => c.existing_id).map(c => c.existing_id!)
   const syncStatusMap = new Map<string, string>()
   if (existingIds.length > 0) {
@@ -91,4 +90,23 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ created, updated, errors })
+}
+
+export async function DELETE(req: NextRequest) {
+  const user = await getAuthenticatedUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { ids } = await req.json() as { ids: string[] }
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return NextResponse.json({ error: '不正なリクエスト' }, { status: 400 })
+  }
+
+  const supabase = createServerClient()
+  const { error, count } = await supabase
+    .from('daily_reports')
+    .delete({ count: 'exact' })
+    .in('id', ids)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ deleted: count ?? ids.length })
 }
