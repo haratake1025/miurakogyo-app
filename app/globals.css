@@ -27,7 +27,7 @@ body {
 
 @page {
   size: A3 landscape;
-  margin: 8mm;
+  margin: 12mm 8mm;
 }
 
 @media print {
