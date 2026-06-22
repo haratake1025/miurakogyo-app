@@ -106,17 +106,48 @@ export async function POST(req: NextRequest) {
         return true
       })
 
+    // 社員: 新規のみ is_active=true で挿入、既存は is_active を変えずに名前等を更新
     if (employeeRows.length) {
-      const { error } = await supabase
+      const { data: existingEmps } = await supabase
         .from('workers')
-        .upsert(employeeRows, { onConflict: 'cbo_company_user_id' })
-      if (error) throw new Error(error.message)
+        .select('cbo_company_user_id')
+        .eq('source_kind', 'employee')
+        .in('cbo_company_user_id', employeeRows.map(r => r.cbo_company_user_id!))
+      const existingEmpIds = new Set((existingEmps ?? []).map(r => r.cbo_company_user_id))
+
+      const newEmps = employeeRows.filter(r => !existingEmpIds.has(r.cbo_company_user_id!))
+      if (newEmps.length) {
+        const { error } = await supabase.from('workers').insert(newEmps)
+        if (error) throw new Error(error.message)
+      }
+      for (const row of employeeRows.filter(r => existingEmpIds.has(r.cbo_company_user_id!))) {
+        const { error } = await supabase.from('workers')
+          .update({ worker_name: row.worker_name, name_kana: row.name_kana, tel: row.tel, last_synced_at: row.last_synced_at })
+          .eq('cbo_company_user_id', row.cbo_company_user_id!)
+        if (error) throw new Error(error.message)
+      }
     }
+
+    // 協力会社: 同様に is_active を保持して更新
     if (partnerRows.length) {
-      const { error } = await supabase
+      const { data: existingPtrs } = await supabase
         .from('workers')
-        .upsert(partnerRows, { onConflict: 'cbo_supplier_id,cbo_supplier_staff_id' })
-      if (error) throw new Error(error.message)
+        .select('cbo_supplier_staff_id')
+        .eq('source_kind', 'partner')
+        .in('cbo_supplier_staff_id', partnerRows.map(r => r.cbo_supplier_staff_id!))
+      const existingPtrIds = new Set((existingPtrs ?? []).map(r => r.cbo_supplier_staff_id))
+
+      const newPtrs = partnerRows.filter(r => !existingPtrIds.has(r.cbo_supplier_staff_id!))
+      if (newPtrs.length) {
+        const { error } = await supabase.from('workers').insert(newPtrs)
+        if (error) throw new Error(error.message)
+      }
+      for (const row of partnerRows.filter(r => existingPtrIds.has(r.cbo_supplier_staff_id!))) {
+        const { error } = await supabase.from('workers')
+          .update({ worker_name: row.worker_name, company_name: row.company_name, last_synced_at: row.last_synced_at })
+          .eq('cbo_supplier_staff_id', row.cbo_supplier_staff_id!)
+        if (error) throw new Error(error.message)
+      }
     }
 
     // CBO に存在しなくなった作業者を非活性化（削除ではなく is_active = false）
