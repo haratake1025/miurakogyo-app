@@ -162,15 +162,28 @@ export async function POST(req: NextRequest) {
         .not('cbo_company_user_id', 'in', `(${activeIds.join(',')})`)
       if (error) throw new Error(error.message)
     }
-    if (target !== 'employee' && partnerRows.length) {
-      const activeStaffIds = partnerRows.map(r => r.cbo_supplier_staff_id!)
-      const { error } = await supabase
+    if (target !== 'employee') {
+      // cbo_supplier_staff_id は会社内ローカルIDの可能性があるため
+      // (cbo_supplier_id, cbo_supplier_staff_id) の複合キーで照合し、
+      // 一致しないものを UUID 主キーで更新する
+      const activeCboKeys = new Set(
+        partnerRows.map(r => `${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`)
+      )
+      const { data: activeDbPartners } = await supabase
         .from('workers')
-        .update({ is_active: false })
+        .select('id, cbo_supplier_id, cbo_supplier_staff_id')
         .eq('source_kind', 'partner')
         .eq('is_active', true)
-        .not('cbo_supplier_staff_id', 'in', `(${activeStaffIds.join(',')})`)
-      if (error) throw new Error(error.message)
+      const toDeactivate = (activeDbPartners ?? [])
+        .filter(p => !activeCboKeys.has(`${p.cbo_supplier_id}:${p.cbo_supplier_staff_id}`))
+        .map(p => p.id)
+      if (toDeactivate.length) {
+        const { error } = await supabase
+          .from('workers')
+          .update({ is_active: false })
+          .in('id', toDeactivate)
+        if (error) throw new Error(error.message)
+      }
     }
 
     result.workers = workerRows.length
