@@ -488,6 +488,9 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
             {clipboard && (
               <span className="text-xs text-gray-400 ml-2 italic">コピー済（セル選択後に Ctrl+V）</span>
             )}
+            <span className="ml-auto text-xs text-gray-600">
+              延べ人数: <span className="font-semibold">{reports.length}人日</span>
+            </span>
           </>
         )}
       </div>
