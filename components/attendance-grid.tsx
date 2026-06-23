@@ -506,6 +506,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
               {days.map(day => {
                 const { label } = getDayLabel(day)
                 const dayNum = new Date(day + 'T00:00:00').getDate()
+                const count = allWorkers.filter(w => reportMap.has(`${w.id}_${day}`)).length
                 return (
                   <th
                     key={day}
@@ -514,6 +515,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
                   >
                     <div>{dayNum}</div>
                     <div className="text-gray-400">{label}</div>
+                    <div className="text-gray-400 font-normal">{count > 0 ? `${count}人` : ''}</div>
                   </th>
                 )
               })}
