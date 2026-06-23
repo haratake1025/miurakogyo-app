@@ -35,7 +35,14 @@ function buildWorkers(reports: ReportRow[]): WorkerSummary[] {
   for (const r of reports) {
     if (!map.has(r.worker_id)) map.set(r.worker_id, r.worker)
   }
-  return Array.from(map.values())
+  return Array.from(map.values()).sort((a, b) => {
+    const aMiura = (a.company_name ?? '') === '三浦興業'
+    const bMiura = (b.company_name ?? '') === '三浦興業'
+    if (aMiura !== bMiura) return aMiura ? -1 : 1
+    const co = (a.company_name ?? '').localeCompare(b.company_name ?? '', 'ja')
+    if (co !== 0) return co
+    return a.worker_name.localeCompare(b.worker_name, 'ja')
+  })
 }
 
 export function AsbestosGrid({ siteId, month, period, reports, onRefresh }: Props) {
