@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
         .not('cbo_company_user_id', 'in', `(${activeIds.join(',')})`)
       if (error) throw new Error(error.message)
     }
-    if (target !== 'employee') {
+    if (target !== 'employee' && partnerRows.length) {
       // cbo_supplier_staff_id は会社内ローカルIDの可能性があるため
       // (cbo_supplier_id, cbo_supplier_staff_id) の複合キーで照合し、
       // 一致しないものを UUID 主キーで更新する
