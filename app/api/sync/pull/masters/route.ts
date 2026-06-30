@@ -132,17 +132,19 @@ export async function POST(req: NextRequest) {
     if (partnerRows.length) {
       const { data: existingPtrs } = await supabase
         .from('workers')
-        .select('cbo_supplier_staff_id')
+        .select('cbo_supplier_id, cbo_supplier_staff_id')
         .eq('source_kind', 'partner')
         .in('cbo_supplier_staff_id', partnerRows.map(r => r.cbo_supplier_staff_id!))
-      const existingPtrIds = new Set((existingPtrs ?? []).map(r => r.cbo_supplier_staff_id))
+      const existingPtrKeys = new Set(
+        (existingPtrs ?? []).map(r => `${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`)
+      )
 
-      const newPtrs = partnerRows.filter(r => !existingPtrIds.has(r.cbo_supplier_staff_id!))
+      const newPtrs = partnerRows.filter(r => !existingPtrKeys.has(`${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`))
       if (newPtrs.length) {
         const { error } = await supabase.from('workers').insert(newPtrs)
         if (error) throw new Error(error.message)
       }
-      for (const row of partnerRows.filter(r => existingPtrIds.has(r.cbo_supplier_staff_id!))) {
+      for (const row of partnerRows.filter(r => existingPtrKeys.has(`${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`))) {
         const { error } = await supabase.from('workers')
           .update({ worker_name: row.worker_name, company_name: row.company_name, last_synced_at: row.last_synced_at })
           .eq('cbo_supplier_id', row.cbo_supplier_id!)
