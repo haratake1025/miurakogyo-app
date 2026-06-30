@@ -5,7 +5,10 @@ export function getDaysInMonth(yearMonth: string): string[] {
   const days: string[] = []
   const d = new Date(year, month - 1, 1)
   while (d.getMonth() === month - 1) {
-    days.push(d.toISOString().slice(0, 10))
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    days.push(`${y}-${m}-${day}`)
     d.setDate(d.getDate() + 1)
   }
   return days
