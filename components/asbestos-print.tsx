@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import type { Site } from '@/types/db'
 import type { ReportRow, WorkerSummary } from '@/types/frontend'
 import { getDaysInMonth } from '@/lib/utils/date'
+import { compareWorkers } from '@/lib/utils/sort'
 
 const WORK_SHORT: Record<string, string> = {
   '106548': '①', '106549': '②', '106550': '③', '106551': '④',
@@ -90,7 +91,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
   for (const r of reports) {
     if (!workerMap.has(r.worker_id)) workerMap.set(r.worker_id, r.worker)
   }
-  const workers = [...workerMap.values()]
+  const workers = [...workerMap.values()].sort(compareWorkers)
 
   const reportMap = new Map(reports.map(r => [`${r.worker_id}_${r.work_date}`, r]))
   const totalWorkers = workers.length
