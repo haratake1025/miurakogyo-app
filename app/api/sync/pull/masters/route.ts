@@ -108,11 +108,12 @@ export async function POST(req: NextRequest) {
 
     // 社員: 新規のみ is_active=true で挿入、既存は is_active を変えずに名前等を更新
     if (employeeRows.length) {
-      const { data: existingEmps } = await supabase
+      const { data: existingEmps, error: empLookupErr } = await supabase
         .from('workers')
         .select('cbo_company_user_id')
         .eq('source_kind', 'employee')
         .in('cbo_company_user_id', employeeRows.map(r => r.cbo_company_user_id!))
+      if (empLookupErr) throw new Error(empLookupErr.message)
       const existingEmpIds = new Set((existingEmps ?? []).map(r => r.cbo_company_user_id))
 
       const newEmps = employeeRows.filter(r => !existingEmpIds.has(r.cbo_company_user_id!))
@@ -130,11 +131,12 @@ export async function POST(req: NextRequest) {
 
     // 協力会社: 同様に is_active を保持して更新
     if (partnerRows.length) {
-      const { data: existingPtrs } = await supabase
+      const { data: existingPtrs, error: ptrLookupErr } = await supabase
         .from('workers')
         .select('cbo_supplier_id, cbo_supplier_staff_id')
         .eq('source_kind', 'partner')
         .in('cbo_supplier_staff_id', partnerRows.map(r => r.cbo_supplier_staff_id!))
+      if (ptrLookupErr) throw new Error(ptrLookupErr.message)
       const existingPtrKeys = new Set(
         (existingPtrs ?? []).map(r => `${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`)
       )
