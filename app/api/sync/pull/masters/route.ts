@@ -121,12 +121,15 @@ export async function POST(req: NextRequest) {
         const { error } = await supabase.from('workers').insert(newEmps)
         if (error) throw new Error(error.message)
       }
-      for (const row of employeeRows.filter(r => existingEmpIds.has(r.cbo_company_user_id!))) {
-        const { error } = await supabase.from('workers')
-          .update({ worker_name: row.worker_name, name_kana: row.name_kana, tel: row.tel, last_synced_at: row.last_synced_at })
-          .eq('cbo_company_user_id', row.cbo_company_user_id!)
-        if (error) throw new Error(error.message)
-      }
+      await Promise.all(
+        employeeRows
+          .filter(r => existingEmpIds.has(r.cbo_company_user_id!))
+          .map(row => supabase.from('workers')
+            .update({ worker_name: row.worker_name, name_kana: row.name_kana, tel: row.tel, last_synced_at: row.last_synced_at })
+            .eq('cbo_company_user_id', row.cbo_company_user_id!)
+            .then(({ error }) => { if (error) throw new Error(error.message) })
+          )
+      )
     }
 
     // 協力会社: 同様に is_active を保持して更新
@@ -146,13 +149,16 @@ export async function POST(req: NextRequest) {
         const { error } = await supabase.from('workers').insert(newPtrs)
         if (error) throw new Error(error.message)
       }
-      for (const row of partnerRows.filter(r => existingPtrKeys.has(`${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`))) {
-        const { error } = await supabase.from('workers')
-          .update({ worker_name: row.worker_name, company_name: row.company_name, last_synced_at: row.last_synced_at })
-          .eq('cbo_supplier_id', row.cbo_supplier_id!)
-          .eq('cbo_supplier_staff_id', row.cbo_supplier_staff_id!)
-        if (error) throw new Error(error.message)
-      }
+      await Promise.all(
+        partnerRows
+          .filter(r => existingPtrKeys.has(`${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`))
+          .map(row => supabase.from('workers')
+            .update({ worker_name: row.worker_name, company_name: row.company_name, last_synced_at: row.last_synced_at })
+            .eq('cbo_supplier_id', row.cbo_supplier_id!)
+            .eq('cbo_supplier_staff_id', row.cbo_supplier_staff_id!)
+            .then(({ error }) => { if (error) throw new Error(error.message) })
+          )
+      )
     }
 
     // CBO に存在しなくなった作業者を非活性化（削除ではなく is_active = false）
