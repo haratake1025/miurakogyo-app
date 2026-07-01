@@ -108,11 +108,12 @@ export async function POST(req: NextRequest) {
 
     // 社員: 新規のみ is_active=true で挿入、既存は is_active を変えずに名前等を更新
     if (employeeRows.length) {
-      const { data: existingEmps } = await supabase
+      const { data: existingEmps, error: empLookupErr } = await supabase
         .from('workers')
         .select('cbo_company_user_id')
         .eq('source_kind', 'employee')
         .in('cbo_company_user_id', employeeRows.map(r => r.cbo_company_user_id!))
+      if (empLookupErr) throw new Error(empLookupErr.message)
       const existingEmpIds = new Set((existingEmps ?? []).map(r => r.cbo_company_user_id))
 
       const newEmps = employeeRows.filter(r => !existingEmpIds.has(r.cbo_company_user_id!))
@@ -120,34 +121,44 @@ export async function POST(req: NextRequest) {
         const { error } = await supabase.from('workers').insert(newEmps)
         if (error) throw new Error(error.message)
       }
-      for (const row of employeeRows.filter(r => existingEmpIds.has(r.cbo_company_user_id!))) {
-        const { error } = await supabase.from('workers')
-          .update({ worker_name: row.worker_name, name_kana: row.name_kana, tel: row.tel, last_synced_at: row.last_synced_at })
-          .eq('cbo_company_user_id', row.cbo_company_user_id!)
-        if (error) throw new Error(error.message)
-      }
+      await Promise.all(
+        employeeRows
+          .filter(r => existingEmpIds.has(r.cbo_company_user_id!))
+          .map(row => supabase.from('workers')
+            .update({ worker_name: row.worker_name, name_kana: row.name_kana, tel: row.tel, last_synced_at: row.last_synced_at })
+            .eq('cbo_company_user_id', row.cbo_company_user_id!)
+            .then(({ error }) => { if (error) throw new Error(error.message) })
+          )
+      )
     }
 
     // 協力会社: 同様に is_active を保持して更新
     if (partnerRows.length) {
-      const { data: existingPtrs } = await supabase
+      const { data: existingPtrs, error: ptrLookupErr } = await supabase
         .from('workers')
-        .select('cbo_supplier_staff_id')
+        .select('cbo_supplier_id, cbo_supplier_staff_id')
         .eq('source_kind', 'partner')
         .in('cbo_supplier_staff_id', partnerRows.map(r => r.cbo_supplier_staff_id!))
-      const existingPtrIds = new Set((existingPtrs ?? []).map(r => r.cbo_supplier_staff_id))
+      if (ptrLookupErr) throw new Error(ptrLookupErr.message)
+      const existingPtrKeys = new Set(
+        (existingPtrs ?? []).map(r => `${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`)
+      )
 
-      const newPtrs = partnerRows.filter(r => !existingPtrIds.has(r.cbo_supplier_staff_id!))
+      const newPtrs = partnerRows.filter(r => !existingPtrKeys.has(`${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`))
       if (newPtrs.length) {
         const { error } = await supabase.from('workers').insert(newPtrs)
         if (error) throw new Error(error.message)
       }
-      for (const row of partnerRows.filter(r => existingPtrIds.has(r.cbo_supplier_staff_id!))) {
-        const { error } = await supabase.from('workers')
-          .update({ worker_name: row.worker_name, company_name: row.company_name, last_synced_at: row.last_synced_at })
-          .eq('cbo_supplier_staff_id', row.cbo_supplier_staff_id!)
-        if (error) throw new Error(error.message)
-      }
+      await Promise.all(
+        partnerRows
+          .filter(r => existingPtrKeys.has(`${r.cbo_supplier_id}:${r.cbo_supplier_staff_id}`))
+          .map(row => supabase.from('workers')
+            .update({ worker_name: row.worker_name, company_name: row.company_name, last_synced_at: row.last_synced_at })
+            .eq('cbo_supplier_id', row.cbo_supplier_id!)
+            .eq('cbo_supplier_staff_id', row.cbo_supplier_staff_id!)
+            .then(({ error }) => { if (error) throw new Error(error.message) })
+          )
+      )
     }
 
     // CBO に存在しなくなった作業者を非活性化（削除ではなく is_active = false）
@@ -162,7 +173,7 @@ export async function POST(req: NextRequest) {
         .not('cbo_company_user_id', 'in', `(${activeIds.join(',')})`)
       if (error) throw new Error(error.message)
     }
-    if (target !== 'employee') {
+    if (target !== 'employee' && partnerRows.length) {
       // cbo_supplier_staff_id は会社内ローカルIDの可能性があるため
       // (cbo_supplier_id, cbo_supplier_staff_id) の複合キーで照合し、
       // 一致しないものを UUID 主キーで更新する
