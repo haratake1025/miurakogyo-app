@@ -473,11 +473,6 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
             >
               ＋ 作業者を追加
             </button>
-            <div className="flex gap-3 text-xs text-gray-400 ml-2">
-              <span><span className="text-blue-500 font-bold">!</span> 新規</span>
-              <span><span className="text-orange-500">▲</span> 編集済</span>
-              <span><span className="text-red-500">✕</span> 競合</span>
-            </div>
             {clipboard && (
               <span className="text-xs text-gray-400 ml-2 italic">コピー済（セル選択後に Ctrl+V）</span>
             )}
@@ -529,7 +524,6 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
                 </td>
                 {days.map((day, dIdx) => {
                   const report = reportMap.get(`${worker.id}_${day}`)
-                  const status = report?.sync_status
                   const isNight = report?.day_yakan_id === '105361'
                   const oh = report?.over_hour ?? 0
                   const selected = isCellSelected(wIdx, dIdx, selection)
@@ -543,18 +537,11 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
                       className={`border border-gray-200 cursor-pointer text-center p-0.5 h-9 ${dayHeaderClass(day)} ${selected ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
                     >
                       {report && (
-                        <div
-                          className={`flex items-center justify-center gap-0.5 border rounded px-0.5 h-full mx-0.5 ${STATUS_BORDER[status!] ?? 'border-gray-200'}`}
-                        >
-                          <span className={status === 'conflict' ? 'text-red-600' : 'text-gray-700'}>
+                        <div className="flex items-center justify-center gap-0.5 border border-gray-200 rounded px-0.5 h-full mx-0.5">
+                          <span className="text-gray-700">
                             {isNight ? '●夜' : '●'}
                             {oh > 0 && <span className="text-gray-500">+{oh}</span>}
                           </span>
-                          {STATUS_BADGE[status!] && (
-                            <span className={`font-bold ${STATUS_BADGE_COLOR[status!]}`}>
-                              {STATUS_BADGE[status!]}
-                            </span>
-                          )}
                         </div>
                       )}
                     </td>
