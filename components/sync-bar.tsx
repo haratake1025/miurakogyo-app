@@ -8,13 +8,13 @@ type Props = {
   month: string
   unsyncedCount: number
   reportsQueryKey: unknown[]
-  inline?: boolean
 }
 
-export function SyncBar({ siteId, month, unsyncedCount, reportsQueryKey, inline = false }: Props) {
+export function SyncBar({ siteId, month, unsyncedCount, reportsQueryKey }: Props) {
   const qc = useQueryClient()
 
   const from = `${month}-01`
+  // last day of month
   const to = (() => {
     const [y, m] = month.split('-').map(Number)
     return new Date(y, m, 0).toISOString().slice(0, 10)
@@ -63,12 +63,12 @@ export function SyncBar({ siteId, month, unsyncedCount, reportsQueryKey, inline 
 
   const busy = pull.isPending || push.isPending
 
-  const buttons = (
-    <>
+  return (
+    <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200">
       <button
         onClick={() => pull.mutate()}
         disabled={busy}
-        className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 shrink-0"
+        className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
       >
         {pull.isPending ? '取込中...' : 'CBOから取込'}
       </button>
@@ -76,7 +76,7 @@ export function SyncBar({ siteId, month, unsyncedCount, reportsQueryKey, inline 
       <button
         onClick={() => push.mutate()}
         disabled={busy || unsyncedCount === 0}
-        className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+        className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5"
       >
         {push.isPending ? '反映中...' : 'CBOへ反映'}
         {unsyncedCount > 0 && (
@@ -87,16 +87,8 @@ export function SyncBar({ siteId, month, unsyncedCount, reportsQueryKey, inline 
       </button>
 
       {busy && (
-        <span className="text-xs text-gray-500 animate-pulse shrink-0">処理中...</span>
+        <span className="text-xs text-gray-500 animate-pulse">処理中...</span>
       )}
-    </>
-  )
-
-  if (inline) return <>{buttons}</>
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200">
-      {buttons}
     </div>
   )
 }
