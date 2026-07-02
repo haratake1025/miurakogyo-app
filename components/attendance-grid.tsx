@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, Fragment } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { ReportRow, WorkerSummary } from '@/types/frontend'
@@ -88,6 +88,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   const [clipboard, setClipboard] = useState<ClipboardData | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [showBulkEdit, setShowBulkEdit] = useState(false)
+  const [showTotals, setShowTotals] = useState(false)
 
   // Map of all available workers (reports + manually added)
   const allWorkerMap = useMemo(() => {
@@ -108,6 +109,17 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
 
   const reportMap = new Map(reports.map(r => [`${r.worker_id}_${r.work_date}`, r]))
   const excludeIds = allWorkers.map(w => w.id)
+
+  // 人工合計（showTotals=true のときのみ算出）
+  const workerDayCounts = useMemo(() => {
+    if (!showTotals) return new Map<string, number>()
+    return new Map(allWorkers.map(w => [
+      w.id,
+      days.filter(day => reportMap.has(`${w.id}_${day}`)).length,
+    ]))
+  // reportMap は reports から再生成されるため reports を依存に含める
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTotals, allWorkers, days, reports])
 
   // --- Cell selection helpers ---
   const hasDraggedRef = useRef(false)
@@ -473,6 +485,12 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
             >
               ＋ 作業者を追加
             </button>
+            <button
+              onClick={() => setShowTotals(v => !v)}
+              className={`text-sm px-3 py-1.5 border rounded ${showTotals ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+            >
+              人工合計
+            </button>
             {clipboard && (
               <span className="text-xs text-gray-400 ml-2 italic">コピー済（セル選択後に Ctrl+V）</span>
             )}
@@ -510,49 +528,107 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
                   </th>
                 )
               })}
+              {showTotals && (
+                <th className="sticky top-0 right-0 z-30 border border-blue-200 bg-blue-50 py-1 font-semibold text-center text-blue-700 whitespace-nowrap" style={{ minWidth: 52 }}>
+                  合計
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
-            {allWorkers.map((worker, wIdx) => (
-              <tr
-                key={worker.id}
-                className="hover:bg-gray-50/50"
-              >
-                <td className="sticky left-0 z-10 bg-white border border-gray-200 px-3 py-1.5 whitespace-nowrap">
-                  <div className="text-gray-400 text-xs leading-tight">{worker.company_name}</div>
-                  <div className="font-medium text-gray-900">{worker.worker_name}</div>
-                </td>
-                {days.map((day, dIdx) => {
-                  const report = reportMap.get(`${worker.id}_${day}`)
-                  const isNight = report?.day_yakan_id === '105361'
-                  const oh = report?.over_hour ?? 0
-                  const selected = isCellSelected(wIdx, dIdx, selection)
+            {allWorkers.map((worker, wIdx) => {
+              const isLastInGroup = wIdx === allWorkers.length - 1 ||
+                allWorkers[wIdx + 1].company_name !== worker.company_name
+              const companyName = worker.company_name ?? ''
+              const companyTotal = isLastInGroup && showTotals
+                ? allWorkers
+                    .filter(w => (w.company_name ?? '') === companyName)
+                    .reduce((sum, w) => sum + (workerDayCounts.get(w.id) ?? 0), 0)
+                : 0
 
+              return (
+                <Fragment key={worker.id}>
+                  <tr className="hover:bg-gray-50/50">
+                    <td className="sticky left-0 z-10 bg-white border border-gray-200 px-3 py-1.5 whitespace-nowrap">
+                      <div className="text-gray-400 text-xs leading-tight">{worker.company_name}</div>
+                      <div className="font-medium text-gray-900">{worker.worker_name}</div>
+                    </td>
+                    {days.map((day, dIdx) => {
+                      const report = reportMap.get(`${worker.id}_${day}`)
+                      const isNight = report?.day_yakan_id === '105361'
+                      const oh = report?.over_hour ?? 0
+                      const selected = isCellSelected(wIdx, dIdx, selection)
+
+                      return (
+                        <td
+                          key={day}
+                          onMouseDown={e => handleCellMouseDown(wIdx, dIdx, e)}
+                          onMouseEnter={() => handleCellMouseEnter(wIdx, dIdx)}
+                          onMouseUp={() => handleCellMouseUp(wIdx, dIdx, worker, day)}
+                          className={`border border-gray-200 cursor-pointer text-center p-0.5 h-9 ${dayHeaderClass(day)} ${selected ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
+                        >
+                          {report && (
+                            <div className="flex items-center justify-center gap-0.5 border border-gray-200 rounded px-0.5 h-full mx-0.5">
+                              <span className="text-gray-700">
+                                {isNight ? '●夜' : '●'}
+                                {oh > 0 && <span className="text-gray-500">+{oh}</span>}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                      )
+                    })}
+                    {showTotals && (
+                      <td className="sticky right-0 z-10 border border-blue-200 bg-blue-50 text-center font-semibold text-blue-700 font-[tabular-nums]">
+                        {workerDayCounts.get(worker.id) ?? 0}
+                      </td>
+                    )}
+                  </tr>
+                  {showTotals && isLastInGroup && (
+                    <tr className="bg-blue-50/60">
+                      <td className="sticky left-0 z-10 border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 whitespace-nowrap" style={{ boxShadow: 'inset 3px 0 0 #2563EB' }}>
+                        {companyName}　小計
+                      </td>
+                      {days.map(day => (
+                        <td key={day} className="border border-blue-100 text-center text-xs text-blue-600 font-medium">
+                          {(() => {
+                            const cnt = allWorkers
+                              .filter(w => (w.company_name ?? '') === companyName)
+                              .filter(w => reportMap.has(`${w.id}_${day}`)).length
+                            return cnt > 0 ? cnt : ''
+                          })()}
+                        </td>
+                      ))}
+                      <td className="sticky right-0 z-10 border border-blue-300 bg-blue-100 text-center font-bold text-blue-900 font-[tabular-nums]">
+                        {companyTotal}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
+            {showTotals && allWorkers.length > 0 && (
+              <tr className="bg-blue-900">
+                <td className="sticky left-0 z-10 border border-blue-700 bg-blue-900 px-3 py-1.5 text-xs font-bold text-blue-200 whitespace-nowrap tracking-widest">
+                  月間総計
+                </td>
+                {days.map(day => {
+                  const cnt = allWorkers.filter(w => reportMap.has(`${w.id}_${day}`)).length
                   return (
-                    <td
-                      key={day}
-                      onMouseDown={e => handleCellMouseDown(wIdx, dIdx, e)}
-                      onMouseEnter={() => handleCellMouseEnter(wIdx, dIdx)}
-                      onMouseUp={() => handleCellMouseUp(wIdx, dIdx, worker, day)}
-                      className={`border border-gray-200 cursor-pointer text-center p-0.5 h-9 ${dayHeaderClass(day)} ${selected ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
-                    >
-                      {report && (
-                        <div className="flex items-center justify-center gap-0.5 border border-gray-200 rounded px-0.5 h-full mx-0.5">
-                          <span className="text-gray-700">
-                            {isNight ? '●夜' : '●'}
-                            {oh > 0 && <span className="text-gray-500">+{oh}</span>}
-                          </span>
-                        </div>
-                      )}
+                    <td key={day} className="border border-blue-700 text-center text-xs font-medium text-blue-300">
+                      {cnt > 0 ? cnt : ''}
                     </td>
                   )
                 })}
+                <td className="sticky right-0 z-10 border border-blue-500 bg-blue-700 text-center font-black text-white text-sm font-[tabular-nums]">
+                  {[...workerDayCounts.values()].reduce((a, b) => a + b, 0)}
+                </td>
               </tr>
-            ))}
+            )}
             {allWorkers.length === 0 && (
               <tr>
                 <td
-                  colSpan={days.length + 1}
+                  colSpan={days.length + (showTotals ? 2 : 1)}
                   className="text-center py-10 text-gray-400"
                 >
                   作業者がいません。「＋作業者を追加」か「CBOから取込」を実行してください。
