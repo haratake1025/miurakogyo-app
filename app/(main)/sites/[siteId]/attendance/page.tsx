@@ -52,114 +52,108 @@ export default function AttendancePage({
         <AsbestosPrint site={site} reports={reports} month={month} period={period} />
       )}
 
-      {/* Header */}
-      <div className="px-5 py-3 bg-white border-b border-gray-200 print:hidden">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Link href="/" className="hover:text-blue-600">現場一覧</Link>
-              <span>/</span>
-              <span>{site?.name ?? '...'}</span>
-            </div>
-            <h1 className="text-lg font-bold text-gray-900 mt-0.5">
-              {isAsbestos ? '石綿作業従事者作業記録' : '出面表'}
-            </h1>
-            {site?.manager_name && (
-              <p className="text-xs text-gray-500">現場責任者: {site.manager_name}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {!isAsbestos && (
-              <a
-                href={`/api/sites/${siteId}/export?month=${month}`}
-                download
-                className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
-              >
-                Excel出力
-              </a>
-            )}
-            {isAsbestos && (
-              <button
-                onClick={() => window.print()}
-                className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
-              >
-                印刷
-              </button>
-            )}
-            {/* 出面 / 石綿 切替タブ */}
-            <div className="flex rounded overflow-hidden border border-gray-300">
-              <button
-                onClick={() => setView('attendance')}
-                className={`px-3 py-1.5 text-xs ${
-                  !isAsbestos ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                出面表
-              </button>
-              <button
-                onClick={() => setView('asbestos')}
-                className={`px-3 py-1.5 text-xs border-l border-gray-300 ${
-                  isAsbestos ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                石綿記録
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 月 + 期間コントロール */}
-        <div className="flex items-center gap-4 mt-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setMonth(m => addMonths(m, -1))}
-              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
-            >
-              ◀
-            </button>
-            <span className="font-semibold text-gray-800 min-w-24 text-center">
-              {formatMonth(month)}
-            </span>
-            <button
-              onClick={() => setMonth(m => addMonths(m, 1))}
-              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
-            >
-              ▶
-            </button>
-          </div>
-
-          {/* 上旬 / 下旬（石綿ビューのみ） */}
-          {isAsbestos && (
-            <div className="flex rounded overflow-hidden border border-gray-300">
-              <button
-                onClick={() => setPeriod('first')}
-                className={`px-3 py-1 text-xs ${
-                  period === 'first' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                上旬（1–15日）
-              </button>
-              <button
-                onClick={() => setPeriod('second')}
-                className={`px-3 py-1 text-xs border-l border-gray-300 ${
-                  period === 'second' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                下旬（16日〜）
-              </button>
-            </div>
+      {/* Header — 1行 */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 print:hidden flex-wrap">
+        {/* パンくず + 現場名 */}
+        <div className="flex items-center gap-1 text-sm min-w-0 shrink">
+          <Link href="/" className="text-gray-400 hover:text-blue-600 text-xs shrink-0">現場一覧</Link>
+          <span className="text-gray-300 text-xs">/</span>
+          <span className="font-semibold text-gray-900 text-sm truncate max-w-48">{site?.name ?? '...'}</span>
+          {site?.manager_name && (
+            <span className="text-xs text-gray-400 shrink-0">・{site.manager_name}</span>
           )}
         </div>
-      </div>
 
-      {/* Sync bar */}
-      <div className="print:hidden">
+        <div className="flex-1" />
+
+        {/* 月ナビ */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => setMonth(m => addMonths(m, -1))}
+            className="text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100 text-sm"
+          >
+            ◀
+          </button>
+          <span className="font-semibold text-gray-800 min-w-24 text-center text-sm">
+            {formatMonth(month)}
+          </span>
+          <button
+            onClick={() => setMonth(m => addMonths(m, 1))}
+            className="text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100 text-sm"
+          >
+            ▶
+          </button>
+        </div>
+
+        {/* 上旬 / 下旬（石綿ビューのみ） */}
+        {isAsbestos && (
+          <div className="flex rounded overflow-hidden border border-gray-300 shrink-0">
+            <button
+              onClick={() => setPeriod('first')}
+              className={`px-3 py-1.5 text-xs ${
+                period === 'first' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              上旬
+            </button>
+            <button
+              onClick={() => setPeriod('second')}
+              className={`px-3 py-1.5 text-xs border-l border-gray-300 ${
+                period === 'second' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              下旬
+            </button>
+          </div>
+        )}
+
+        {/* CBO ボタン */}
         <SyncBar
           siteId={siteId}
           month={month}
           unsyncedCount={unsyncedCount}
           reportsQueryKey={reportsKey}
+          inline
         />
+
+        {/* Excel出力 / 印刷 */}
+        {!isAsbestos && (
+          <a
+            href={`/api/sites/${siteId}/export?month=${month}`}
+            download
+            className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50 shrink-0"
+          >
+            Excel出力
+          </a>
+        )}
+        {isAsbestos && (
+          <button
+            onClick={() => window.print()}
+            className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded hover:bg-gray-50 shrink-0"
+          >
+            印刷
+          </button>
+        )}
+
+        {/* 出面 / 石綿 切替タブ */}
+        <div className="flex rounded overflow-hidden border border-gray-300 shrink-0">
+          <button
+            onClick={() => setView('attendance')}
+            className={`px-3 py-1.5 text-xs ${
+              !isAsbestos ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            出面表
+          </button>
+          <button
+            onClick={() => setView('asbestos')}
+            className={`px-3 py-1.5 text-xs border-l border-gray-300 ${
+              isAsbestos ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            石綿記録
+          </button>
+        </div>
       </div>
 
       {/* Grid */}
