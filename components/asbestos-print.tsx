@@ -321,7 +321,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
         </table>
         </div>
 
-        {site.client_name === '株式会社ニチアスセムクリート' && (
+        {site.client_name === '株式会社 ニチアスセムクリート' && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1.5mm', marginTop: '1mm' }}>
             <NichiasLogo size="10pt" />
             <span style={{ fontSize: '10pt', fontWeight: 'bold' }}>ニチアス株式会社</span>
