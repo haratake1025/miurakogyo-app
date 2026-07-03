@@ -142,31 +142,33 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9.8pt' }}>
                 {site.client_name ?? '　'}
               </div>
+              <div style={{ height: INFO_ROW_H, borderBottom: border }} />
               <div style={{ height: INFO_ROW_H }} />
             </div>
 
             {/* 工事件名・期間・責任者（ラベル左寄せ／値中央） */}
             <div style={{ borderLeft: border, flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center' }}>
-                <div style={{ width: '16%', borderRight: border, height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
+                <div style={{ width: '16%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
                   <strong>工 事 件 名：</strong>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '9.8pt' }}>{site.name}</div>
               </div>
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center' }}>
-                <div style={{ width: '16%', borderRight: border, height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
+                <div style={{ width: '16%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
                   <strong>工 事 期 間：</strong>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '9.8pt' }}>
                   {toWareki(site.period_start)}　～　{toWareki(site.period_end)}
                 </div>
               </div>
-              <div style={{ height: INFO_ROW_H, display: 'flex', alignItems: 'center' }}>
-                <div style={{ width: '16%', borderRight: border, height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
+              <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center' }}>
+                <div style={{ width: '16%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
                   <strong>現場責任者：</strong>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '9.8pt' }}>{site.manager_name ?? '　'}</div>
               </div>
+              <div style={{ height: INFO_ROW_H }} />
             </div>
           </div>
 
