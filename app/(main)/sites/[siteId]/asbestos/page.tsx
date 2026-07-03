@@ -117,17 +117,17 @@ export default function AsbestosPage({
               下期（16日〜）
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Sync bar（印刷時は非表示） */}
-      <div className="print:hidden">
-        <SyncBar
-          siteId={siteId}
-          month={month}
-          unsyncedCount={unsyncedCount}
-          reportsQueryKey={reportsKey}
-        />
+          <div className="flex-1" />
+
+          <SyncBar
+            siteId={siteId}
+            month={month}
+            unsyncedCount={unsyncedCount}
+            reportsQueryKey={reportsKey}
+            inline
+          />
+        </div>
       </div>
 
       {/* Grid（印刷時は非表示） */}
