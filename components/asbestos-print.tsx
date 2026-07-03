@@ -187,7 +187,10 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                 <div style={{ flex: 1, padding: '0.8mm 1.5mm' }}>③ 作業中環境測定</div>
                 <div style={{ flex: 1, borderLeft: border, padding: '0.8mm 1.5mm', color: RED }}>⑥管理（監督・安全・品証他）</div>
               </div>
-              <div style={{ padding: '0.8mm 1.5mm', color: RED }}>⑦抜き取り　⑧分析</div>
+              <div style={{ display: 'flex', flex: 1 }}>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', color: RED }}>⑦抜き取り</div>
+                <div style={{ flex: 1, borderLeft: border, padding: '0.8mm 1.5mm', color: RED }}>⑧分析</div>
+              </div>
             </div>
             <div style={{ width: '32%', borderLeft: border, padding: '0.8mm 1.5mm' }}>
               <div style={{ fontWeight: 'bold', fontSize: '9.8pt', marginBottom: '0.5mm' }}>健康状態確認（自己申告）</div>
