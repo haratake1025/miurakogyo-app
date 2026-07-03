@@ -42,7 +42,7 @@ const INFO_ROW_H = '7mm'
 function NichiasLogo({ size }: { size: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 400 400" style={{ verticalAlign: 'middle', flexShrink: 0 }}>
-      <rect width="400" height="400" fill="#0068B7" />
+      <rect width="400" height="400" fill="#000" />
       <g stroke="#fff" strokeLinecap="round" fill="none">
         <line x1="158" y1="205" x2="55" y2="292" strokeWidth="32" />
         <line x1="188" y1="198" x2="332" y2="322" strokeWidth="44" />
@@ -132,9 +132,9 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
         </div>
 
         {/* ===== ヘッダ情報 ===== */}
-        <div style={{ display: 'flex', width: '100%', marginBottom: '1mm', alignItems: 'stretch' }}>
-          {/* 管轄工事会社 + 工事件名・期間・責任者（横罫線が両ブロックを貫通する） */}
-          <div style={{ border, display: 'flex', flex: 1 }}>
+        <div style={{ display: 'flex', width: '100%', marginBottom: '1mm', alignItems: 'flex-start' }}>
+          {/* 管轄工事会社 + 工事件名・期間・責任者（横罫線が両ブロックを貫通する、上と右の外枠は無し） */}
+          <div style={{ borderLeft: border, borderBottom: border, display: 'flex', flex: 1 }}>
             <div style={{ width: '95mm', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center', padding: '0 2mm', fontWeight: 'bold', color: RED, fontSize: '9.8pt' }}>
                 管轄工事会社:
@@ -322,7 +322,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
         </div>
 
         {site.client_name === '株式会社 ニチアスセムクリート' && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1.5mm', marginTop: '1mm' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1.5mm', marginTop: '1mm' }}>
             <NichiasLogo size="10pt" />
             <span style={{ fontSize: '10pt', fontWeight: 'bold' }}>ニチアス株式会社</span>
           </div>
