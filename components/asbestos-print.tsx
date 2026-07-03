@@ -125,7 +125,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
           <span style={{ fontSize: '16pt', fontWeight: 'bold', marginLeft: '10mm' }}>{m}月</span>
           <span style={{ fontSize: '9.8pt', fontWeight: 'bold', marginLeft: '3mm' }}>{periodLabel}</span>
           <div style={{ flex: 1 }} />
-          <div style={{ width: '36%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ width: '40%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <span style={{ fontWeight: 'bold', fontSize: '9.8pt' }}>作業内容・作業種別番号</span>
             <span style={{ fontSize: '9.8pt' }}>平成18年11月13日改定</span>
           </div>
@@ -175,23 +175,23 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
           <div style={{ width: '10mm', flexShrink: 0 }} />
 
           {/* 凡例（詳細は枠内） */}
-          <div style={{ border, width: '36%', display: 'flex', fontSize: '9.4pt' }}>
+          <div style={{ border, width: '40%', display: 'flex', fontSize: '9.4pt' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', flex: 1 }}>
-                <div style={{ flex: 1, padding: '0.8mm 1.5mm' }}>① 準備工事（足場・区画養生他）</div>
-                <div style={{ flex: 1, borderLeft: border, padding: '0.8mm 1.5mm' }}>④ 石綿廃材処理</div>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap' }}>① 準備工事（足場・区画養生他）</div>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap' }}>④ 石綿廃材処理</div>
               </div>
               <div style={{ display: 'flex', flex: 1 }}>
-                <div style={{ flex: 1, padding: '0.8mm 1.5mm' }}>② 石綿除去作業（外装材・保温材）</div>
-                <div style={{ flex: 1, borderLeft: border, padding: '0.8mm 1.5mm' }}>⑤ 養生撤去　（区画養生・足場撤去）</div>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap' }}>② 石綿除去作業（外装材・保温材）</div>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap' }}>⑤ 養生撤去　（区画養生・足場撤去）</div>
               </div>
               <div style={{ display: 'flex', flex: 1 }}>
-                <div style={{ flex: 1, padding: '0.8mm 1.5mm' }}>③ 作業中環境測定</div>
-                <div style={{ flex: 1, borderLeft: border, padding: '0.8mm 1.5mm', color: RED }}>⑥管理（監督・安全・品証他）</div>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap' }}>③ 作業中環境測定</div>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap', color: RED }}>⑥管理（監督・安全・品証他）</div>
               </div>
               <div style={{ display: 'flex', flex: 1 }}>
-                <div style={{ flex: 1, padding: '0.8mm 1.5mm', color: RED }}>⑦抜き取り</div>
-                <div style={{ flex: 1, borderLeft: border, padding: '0.8mm 1.5mm', color: RED }}>⑧分析</div>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap', color: RED }}>⑦抜き取り</div>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap', color: RED }}>⑧分析</div>
               </div>
             </div>
             <div style={{ width: '32%', borderLeft: border, padding: '0.8mm 1.5mm' }}>
