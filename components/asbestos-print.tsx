@@ -236,22 +236,22 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
             </tr>
             <tr style={{ height: `${HEADER_ROW2_H}mm` }}>
               <th style={thBase} />
-              <th style={{ ...thBase, padding: 0 }}>
+              <th colSpan={2} style={{ ...thBase, padding: 0 }}>
                 {/* 対角線: background(グラデーション)は印刷設定で消えることがあるため、
                     border付きの要素を回転させて描画する（枠線は常に印刷される） */}
                 <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: `${HEADER_ROW2_H}mm`, overflow: 'hidden' }}>
                   <div style={{
                     position: 'absolute', top: 0, left: 0,
-                    width: '25.3mm',
+                    width: '54.6mm',
                     borderTop: '1px solid #000',
                     transformOrigin: 'top left',
-                    transform: 'rotate(18.435deg)',
+                    transform: 'rotate(8.43deg)',
                   }} />
                   <span style={{ position: 'absolute', top: '0.5mm', right: '1mm', fontSize: '7pt' }}>確認項目</span>
                   <span style={{ position: 'absolute', bottom: '0.5mm', left: '1mm', fontSize: '8.5pt', color: RED }}>所属会社</span>
+                  <span style={{ position: 'absolute', bottom: '0.5mm', left: '26mm', fontSize: '9pt' }}>作業者名</span>
                 </div>
               </th>
-              <th style={{ ...thBase, fontSize: '9pt' }}>作業者名</th>
               {days.map(day => (
                 <Fragment key={day}>
                   <th style={{ ...thBase, fontSize: '7.1pt' }}>作業<br />内容</th>
