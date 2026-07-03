@@ -136,14 +136,13 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
           {/* 管轄工事会社 + 工事件名・期間・責任者（横罫線が両ブロックを貫通する、上と右の外枠は無し） */}
           <div style={{ borderLeft: border, borderBottom: border, display: 'flex', flex: 1 }}>
             <div style={{ width: '95mm', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ height: INFO_ROW_H }} />
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center', padding: '0 2mm', fontWeight: 'bold', color: RED, fontSize: '9.8pt' }}>
                 管轄工事会社:
               </div>
-              <div style={{ height: INFO_ROW_H, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9.8pt' }}>
+              <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9.8pt' }}>
                 {site.client_name ?? '　'}
               </div>
-              <div style={{ height: '4mm' }} />
+              <div style={{ height: INFO_ROW_H }} />
             </div>
 
             {/* 工事件名・期間・責任者（ラベル左寄せ／値中央） */}
@@ -168,7 +167,6 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '9.8pt' }}>{site.manager_name ?? '　'}</div>
               </div>
-              <div style={{ height: '4mm' }} />
             </div>
           </div>
 
