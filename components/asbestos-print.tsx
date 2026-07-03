@@ -143,6 +143,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
               <div style={{ height: INFO_ROW_H, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9.8pt' }}>
                 {site.client_name ?? '　'}
               </div>
+              <div style={{ height: '4mm' }} />
             </div>
 
             {/* 工事件名・期間・責任者（ラベル左寄せ／値中央） */}
@@ -167,6 +168,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '9.8pt' }}>{site.manager_name ?? '　'}</div>
               </div>
+              <div style={{ height: '4mm' }} />
             </div>
           </div>
 
