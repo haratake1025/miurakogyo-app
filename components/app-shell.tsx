@@ -31,6 +31,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 p-2 space-y-0.5">
           <NavItem href="/" label="現場一覧" />
           <NavItem href="/masters" label="マスタ管理" />
+          <a
+            href="https://office.craft-bank.com/orders?custom_view_id=8440&per_page=100&sort_asc_desc=desc&sort_key=latest_updated_at"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block px-3 py-2 rounded text-sm transition-colors text-gray-300 hover:bg-gray-700 hover:text-white"
+          >
+            CBO
+          </a>
         </nav>
         <div className="p-2 border-t border-gray-700">
           <NavItem href="/sync" label="同期・ログ" />
