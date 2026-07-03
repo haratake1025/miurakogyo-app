@@ -142,31 +142,33 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9.8pt' }}>
                 {site.client_name ?? '　'}
               </div>
+              <div style={{ height: INFO_ROW_H, borderBottom: border }} />
               <div style={{ height: INFO_ROW_H }} />
             </div>
 
             {/* 工事件名・期間・責任者（ラベル左寄せ／値中央） */}
             <div style={{ borderLeft: border, flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center' }}>
-                <div style={{ width: '16%', borderRight: border, height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
+                <div style={{ width: '16%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
                   <strong>工 事 件 名：</strong>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '9.8pt' }}>{site.name}</div>
               </div>
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center' }}>
-                <div style={{ width: '16%', borderRight: border, height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
+                <div style={{ width: '16%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
                   <strong>工 事 期 間：</strong>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '9.8pt' }}>
                   {toWareki(site.period_start)}　～　{toWareki(site.period_end)}
                 </div>
               </div>
-              <div style={{ height: INFO_ROW_H, display: 'flex', alignItems: 'center' }}>
-                <div style={{ width: '16%', borderRight: border, height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
+              <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center' }}>
+                <div style={{ width: '16%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 2mm', fontSize: '9.8pt', whiteSpace: 'nowrap' }}>
                   <strong>現場責任者：</strong>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: '9.8pt' }}>{site.manager_name ?? '　'}</div>
               </div>
+              <div style={{ height: INFO_ROW_H }} />
             </div>
           </div>
 
@@ -187,7 +189,10 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                 <div style={{ flex: 1, padding: '0.8mm 1.5mm' }}>③ 作業中環境測定</div>
                 <div style={{ flex: 1, borderLeft: border, padding: '0.8mm 1.5mm', color: RED }}>⑥管理（監督・安全・品証他）</div>
               </div>
-              <div style={{ padding: '0.8mm 1.5mm', color: RED }}>⑦抜き取り　⑧分析</div>
+              <div style={{ display: 'flex', flex: 1 }}>
+                <div style={{ flex: 1, padding: '0.8mm 1.5mm', color: RED }}>⑦抜き取り</div>
+                <div style={{ flex: 1, borderLeft: border, padding: '0.8mm 1.5mm', color: RED }}>⑧分析</div>
+              </div>
             </div>
             <div style={{ width: '32%', borderLeft: border, padding: '0.8mm 1.5mm' }}>
               <div style={{ fontWeight: 'bold', fontSize: '9.8pt', marginBottom: '0.5mm' }}>健康状態確認（自己申告）</div>
