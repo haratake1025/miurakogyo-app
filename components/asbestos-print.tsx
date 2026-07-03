@@ -38,6 +38,23 @@ const thBase: React.CSSProperties = {
 }
 const INFO_ROW_H = '7mm'
 
+// ニチアス株式会社のロゴマーク（手描き再現。正式なロゴデータではなく近似）
+function NichiasLogo({ size }: { size: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 400 400" style={{ verticalAlign: 'middle', flexShrink: 0 }}>
+      <rect width="400" height="400" fill="#0068B7" />
+      <g stroke="#fff" strokeLinecap="round" fill="none">
+        <line x1="158" y1="205" x2="55" y2="292" strokeWidth="32" />
+        <line x1="188" y1="198" x2="332" y2="322" strokeWidth="44" />
+        <line x1="192" y1="178" x2="268" y2="48" strokeWidth="34" />
+        <line x1="205" y1="190" x2="338" y2="102" strokeWidth="30" />
+      </g>
+      <circle cx="132" cy="108" r="25" fill="#fff" />
+      <circle cx="167" cy="153" r="29" fill="#fff" />
+    </svg>
+  )
+}
+
 export function AsbestosPrint({ site, reports, month, period }: Props) {
   const [, m] = month.split('-').map(Number)
   const periodLabel = period === 'first' ? '上' : '下'
@@ -236,22 +253,22 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
             </tr>
             <tr style={{ height: `${HEADER_ROW2_H}mm` }}>
               <th style={thBase} />
-              <th style={{ ...thBase, padding: 0 }}>
+              <th colSpan={2} style={{ ...thBase, padding: 0 }}>
                 {/* 対角線: background(グラデーション)は印刷設定で消えることがあるため、
                     border付きの要素を回転させて描画する（枠線は常に印刷される） */}
                 <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: `${HEADER_ROW2_H}mm`, overflow: 'hidden' }}>
                   <div style={{
                     position: 'absolute', top: 0, left: 0,
-                    width: '25.3mm',
+                    width: '54.6mm',
                     borderTop: '1px solid #000',
                     transformOrigin: 'top left',
-                    transform: 'rotate(18.435deg)',
+                    transform: 'rotate(8.43deg)',
                   }} />
                   <span style={{ position: 'absolute', top: '0.5mm', right: '1mm', fontSize: '7pt' }}>確認項目</span>
                   <span style={{ position: 'absolute', bottom: '0.5mm', left: '1mm', fontSize: '8.5pt', color: RED }}>所属会社</span>
+                  <span style={{ position: 'absolute', bottom: '0.5mm', left: '26mm', fontSize: '9pt' }}>作業者名</span>
                 </div>
               </th>
-              <th style={{ ...thBase, fontSize: '9pt' }}>作業者名</th>
               {days.map(day => (
                 <Fragment key={day}>
                   <th style={{ ...thBase, fontSize: '7.1pt' }}>作業<br />内容</th>
@@ -303,6 +320,13 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
           </tbody>
         </table>
         </div>
+
+        {site.client_name === '株式会社ニチアスセムクリート' && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1.5mm', marginTop: '1mm' }}>
+            <NichiasLogo size="10pt" />
+            <span style={{ fontSize: '10pt', fontWeight: 'bold' }}>ニチアス株式会社</span>
+          </div>
+        )}
 
       </div>
     </div>
