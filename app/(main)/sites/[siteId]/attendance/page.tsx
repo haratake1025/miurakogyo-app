@@ -149,17 +149,17 @@ export default function AttendancePage({
               </button>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Sync bar */}
-      <div className="print:hidden">
-        <SyncBar
-          siteId={siteId}
-          month={month}
-          unsyncedCount={unsyncedCount}
-          reportsQueryKey={reportsKey}
-        />
+          <div className="flex-1" />
+
+          <SyncBar
+            siteId={siteId}
+            month={month}
+            unsyncedCount={unsyncedCount}
+            reportsQueryKey={reportsKey}
+            inline
+          />
+        </div>
       </div>
 
       {/* Grid */}
