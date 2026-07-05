@@ -134,7 +134,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
         {/* ===== ヘッダ情報 ===== */}
         <div style={{ display: 'flex', width: '100%', marginBottom: '1mm', alignItems: 'flex-start' }}>
           {/* 管轄工事会社 + 工事件名・期間・責任者（横罫線が両ブロックを貫通する、上と右の外枠は無し） */}
-          <div style={{ borderLeft: border, borderBottom: border, display: 'flex', flex: 1 }}>
+          <div style={{ borderLeft: border, borderBottom: border, display: 'flex', flex: 1, marginTop: INFO_ROW_H }}>
             <div style={{ width: '95mm', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
               <div style={{ height: INFO_ROW_H, borderBottom: border, display: 'flex', alignItems: 'center', padding: '0 2mm', fontWeight: 'bold', color: RED, fontSize: '9.8pt' }}>
                 管轄工事会社:
