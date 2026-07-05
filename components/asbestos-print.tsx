@@ -56,7 +56,7 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
   const allDays = getDaysInMonth(month)
   const days = allDays.filter(d => {
     const day = parseInt(d.slice(8), 10)
-    return period === 'first' ? day <= 16 : day > 16
+    return period === 'first' ? day <= 15 : day > 15
   })
 
   const workerMap = new Map<string, WorkerSummary>()
