@@ -1,4 +1,5 @@
 import path from 'node:path'
+import fs from 'node:fs'
 import ExcelJS from 'exceljs'
 import type { Site } from '@/types/db'
 import type { ReportRow, WorkerSummary } from '@/types/frontend'
@@ -7,11 +8,14 @@ import { compareWorkers } from '@/lib/utils/sort'
 import { WORK_SHORT, HEALTH_SHORT } from '@/lib/asbestos/marks'
 
 const TEMPLATE_PATH = path.join(process.cwd(), 'lib/asbestos/asbestos-template.xlsx')
+const LOGO_PATH = path.join(process.cwd(), 'lib/asbestos/nichias-logo.png')
 const SHEET_NAME = { first: '石綿作業従事者記録_上', second: '石綿作業従事者記録_下' } as const
 
 const WORKER_ROW_START = 15
 const MAX_WORKER_ROWS = 20
 const DAY_COL_START = 5 // E列（作業内容）。健康状態確認は+1列（F列）
+const LOGO_ROW = 38
+const NICHIAS_CLIENT_NAME = '株式会社 ニチアスセムクリート'
 
 function toUtcDate(dateStr: string): Date {
   const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number)
@@ -71,6 +75,22 @@ export async function buildAsbestosWorkbook({ site, reports, month, period }: Pa
       ws.getCell(row, col + 1).value = r?.health_type_id ? (HEALTH_SHORT[r.health_type_id] ?? '') : ''
     })
   })
+
+  if (site.client_name === NICHIAS_CLIENT_NAME) {
+    // exceljs のバンドル依存(@fast-csv)が古い@types/nodeを持ち込み、Bufferの型が二重定義され衝突するため無効化
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const imageId = workbook.addImage({ buffer: fs.readFileSync(LOGO_PATH) as any, extension: 'png' })
+    ws.getRow(LOGO_ROW).height = 12
+    ws.addImage(imageId, {
+      tl: { col: 16.4, row: LOGO_ROW - 1 + 0.1 },
+      ext: { width: 14, height: 14 },
+    })
+    const labelCell = ws.getCell(LOGO_ROW, 18)
+    labelCell.value = 'ニチアス株式会社'
+    labelCell.font = { bold: true, size: 10, name: 'MS Pゴシック' }
+    labelCell.alignment = { vertical: 'middle' }
+    ws.pageSetup.printArea = `A1:AJ${LOGO_ROW}`
+  }
 
   const buf = await workbook.xlsx.writeBuffer()
   return Buffer.from(buf)
