@@ -79,12 +79,21 @@ export default function AttendancePage({
               </a>
             )}
             {isAsbestos && (
-              <button
-                onClick={() => window.print()}
-                className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
-              >
-                印刷
-              </button>
+              <>
+                <a
+                  href={`/api/sites/${siteId}/asbestos-export?month=${month}&period=${period}`}
+                  download
+                  className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
+                >
+                  Excel出力
+                </a>
+                <button
+                  onClick={() => window.print()}
+                  className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
+                >
+                  印刷
+                </button>
+              </>
             )}
             {/* 出面 / 石綿 切替タブ */}
             <div className="flex rounded overflow-hidden border border-gray-300">
