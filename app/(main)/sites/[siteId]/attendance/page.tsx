@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { AttendanceGrid } from '@/components/attendance-grid'
 import { AsbestosGrid } from '@/components/asbestos-grid'
-import { AsbestosPrint } from '@/components/asbestos-print'
 import { SyncBar } from '@/components/sync-bar'
 import { formatMonth, addMonths, todayYearMonth } from '@/lib/utils/date'
 import type { Site } from '@/types/db'
@@ -47,11 +46,6 @@ export default function AttendancePage({
 
   return (
     <div className="flex flex-col h-full">
-      {/* 印刷用フォーム（石綿ビュー時のみ） */}
-      {isAsbestos && site && (
-        <AsbestosPrint site={site} reports={reports} month={month} period={period} />
-      )}
-
       {/* Header */}
       <div className="px-5 py-3 bg-white border-b border-gray-200 print:hidden">
         <div className="flex items-start justify-between">
@@ -79,21 +73,13 @@ export default function AttendancePage({
               </a>
             )}
             {isAsbestos && (
-              <>
-                <a
-                  href={`/api/sites/${siteId}/asbestos-export?month=${month}&period=${period}`}
-                  download
-                  className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
-                >
-                  Excel出力
-                </a>
-                <button
-                  onClick={() => window.print()}
-                  className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
-                >
-                  印刷
-                </button>
-              </>
+              <a
+                href={`/api/sites/${siteId}/asbestos-export?month=${month}`}
+                download
+                className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
+              >
+                Excel出力
+              </a>
             )}
             {/* 出面 / 石綿 切替タブ */}
             <div className="flex rounded overflow-hidden border border-gray-300">

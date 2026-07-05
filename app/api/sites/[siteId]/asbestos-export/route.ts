@@ -17,10 +17,6 @@ export async function GET(
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json({ error: 'month パラメータが必要です (YYYY-MM)' }, { status: 400 })
   }
-  const period = req.nextUrl.searchParams.get('period')
-  if (period !== 'first' && period !== 'second') {
-    return NextResponse.json({ error: 'period パラメータが必要です (first|second)' }, { status: 400 })
-  }
 
   const supabase = createServerClient()
 
@@ -54,10 +50,9 @@ export async function GET(
     site: site as Site,
     reports: reports as unknown as ReportRow[],
     month,
-    period,
   })
 
-  const fileName = `石綿作業従事者作業記録_${site.name ?? siteId}_${month}_${period === 'first' ? '上' : '下'}.xlsx`
+  const fileName = `石綿作業従事者作業記録_${site.name ?? siteId}_${month}.xlsx`
 
   return new NextResponse(new Uint8Array(buf), {
     headers: {
