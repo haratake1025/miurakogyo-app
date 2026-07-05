@@ -3,14 +3,8 @@ import type { Site } from '@/types/db'
 import type { ReportRow, WorkerSummary } from '@/types/frontend'
 import { getDaysInMonth } from '@/lib/utils/date'
 import { compareWorkers } from '@/lib/utils/sort'
+import { WORK_SHORT, HEALTH_SHORT } from '@/lib/asbestos/marks'
 
-const WORK_SHORT: Record<string, string> = {
-  '106548': '①', '106549': '②', '106550': '③', '106551': '④',
-  '106552': '⑤', '106553': '⑥', '106554': '⑦', '106555': '⑧',
-}
-const HEALTH_SHORT: Record<string, string> = {
-  '106556': '○', '106557': '△', '106558': '×',
-}
 const WEEK_JP = ['日', '月', '火', '水', '木', '金', '土']
 const RED = '#ff0000'
 
