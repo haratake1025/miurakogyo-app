@@ -192,11 +192,11 @@ export function AsbestosPrint({ site, reports, month, period }: Props) {
                 <div style={{ flex: 1, padding: '0.8mm 1.5mm', whiteSpace: 'nowrap', color: RED }}>⑧分析</div>
               </div>
             </div>
-            <div style={{ width: '32%', borderLeft: border, padding: '0.8mm 1.5mm' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '9.8pt', marginBottom: '0.5mm' }}>健康状態確認（自己申告）</div>
-              <div>○ 体調良好</div>
-              <div>△ 体調やや不調</div>
-              <div>× 体調不調　⇒　作業禁止</div>
+            <div style={{ width: '29%', borderLeft: border, padding: '0.8mm 1.5mm' }}>
+              <div style={{ fontSize: '9.8pt', marginBottom: '0.5mm', whiteSpace: 'nowrap' }}>健康状態確認（自己申告）</div>
+              <div style={{ display: 'flex' }}><div style={{ width: '3em', flexShrink: 0 }} />○ 体調良好</div>
+              <div style={{ display: 'flex' }}><div style={{ width: '3em', flexShrink: 0 }} />△ 体調やや不調</div>
+              <div style={{ display: 'flex', whiteSpace: 'nowrap' }}><div style={{ width: '3em', flexShrink: 0 }} />× 体調不調　⇒　作業禁止</div>
             </div>
           </div>
         </div>
