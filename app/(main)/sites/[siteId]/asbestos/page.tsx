@@ -4,7 +4,6 @@ import { useState, use } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { AsbestosGrid } from '@/components/asbestos-grid'
-import { AsbestosPrint } from '@/components/asbestos-print'
 import { SyncBar } from '@/components/sync-bar'
 import { formatMonth, addMonths, todayYearMonth } from '@/lib/utils/date'
 import type { Site } from '@/types/db'
@@ -39,16 +38,6 @@ export default function AsbestosPage({
 
   return (
     <div className="flex flex-col h-full">
-      {/* 印刷時のみ表示するフォーム */}
-      {site && (
-        <AsbestosPrint
-          site={site}
-          reports={reports}
-          month={month}
-          period={period}
-        />
-      )}
-
       {/* 通常ヘッダ（印刷時は非表示） */}
       <div className="px-5 py-3 bg-white border-b border-gray-200 print:hidden">
         <div className="flex items-start justify-between">
@@ -66,18 +55,12 @@ export default function AsbestosPage({
           </div>
           <div className="flex items-center gap-2">
             <a
-              href={`/api/sites/${siteId}/asbestos-export?month=${month}&period=${period}`}
+              href={`/api/sites/${siteId}/asbestos-export?month=${month}`}
               download
               className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
             >
               Excel出力
             </a>
-            <button
-              onClick={() => window.print()}
-              className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
-            >
-              印刷
-            </button>
             <Link
               href={`/sites/${siteId}/attendance`}
               className="text-xs px-3 py-1.5 border border-blue-300 text-blue-600 rounded hover:bg-blue-50"
