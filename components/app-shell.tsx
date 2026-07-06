@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             rel="noopener noreferrer"
             className="block px-3 py-2 rounded text-sm transition-colors text-gray-300 hover:bg-gray-700 hover:text-white"
           >
-            CBO
+            ホーム
           </a>
         </nav>
         <div className="p-2 border-t border-gray-700">
