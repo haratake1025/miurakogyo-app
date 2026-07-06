@@ -9,7 +9,6 @@ import { CellEditor } from './cell-editor'
 type Props = {
   siteId: string
   month: string
-  period: 'first' | 'second'
   reports: ReportRow[]
   onRefresh: () => void
 }
@@ -39,12 +38,8 @@ function buildWorkers(reports: ReportRow[]): WorkerSummary[] {
   return Array.from(map.values()).sort(compareWorkers)
 }
 
-export function AsbestosGrid({ siteId, month, period, reports, onRefresh }: Props) {
-  const allDays = getDaysInMonth(month)
-  const days = allDays.filter(d => {
-    const day = new Date(d + 'T00:00:00').getDate()
-    return period === 'first' ? day <= 15 : day > 15
-  })
+export function AsbestosGrid({ siteId, month, reports, onRefresh }: Props) {
+  const days = getDaysInMonth(month)
   const workers = buildWorkers(reports)
   const [editing, setEditing] = useState<EditTarget | null>(null)
   const reportMap = new Map(reports.map(r => [`${r.worker_id}_${r.work_date}`, r]))

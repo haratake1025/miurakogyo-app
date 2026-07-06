@@ -17,7 +17,6 @@ export default function AsbestosPage({
 }) {
   const { siteId } = use(params)
   const [month, setMonth] = useState(todayYearMonth)
-  const [period, setPeriod] = useState<'first' | 'second'>('first')
   const qc = useQueryClient()
 
   const { data: site } = useQuery<Site>({
@@ -70,7 +69,7 @@ export default function AsbestosPage({
           </div>
         </div>
 
-        {/* Month + period switcher */}
+        {/* Month switcher */}
         <div className="flex items-center gap-4 mt-3">
           <div className="flex items-center gap-2">
             <button
@@ -87,24 +86,6 @@ export default function AsbestosPage({
               className="text-gray-500 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
             >
               ▶
-            </button>
-          </div>
-          <div className="flex rounded overflow-hidden border border-gray-300">
-            <button
-              onClick={() => setPeriod('first')}
-              className={`px-3 py-1 text-xs ${
-                period === 'first' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              上期（1–15日）
-            </button>
-            <button
-              onClick={() => setPeriod('second')}
-              className={`px-3 py-1 text-xs border-l border-gray-300 ${
-                period === 'second' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              下期（16日〜）
             </button>
           </div>
 
@@ -130,7 +111,6 @@ export default function AsbestosPage({
           <AsbestosGrid
             siteId={siteId}
             month={month}
-            period={period}
             reports={reports}
             onRefresh={() => qc.invalidateQueries({ queryKey: reportsKey })}
           />
