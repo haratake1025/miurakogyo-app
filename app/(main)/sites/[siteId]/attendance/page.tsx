@@ -20,7 +20,6 @@ export default function AttendancePage({
   const { siteId } = use(params)
   const [month, setMonth] = useState(todayYearMonth)
   const [view, setView] = useState<View>('attendance')
-  const [period, setPeriod] = useState<'first' | 'second'>('first')
   const qc = useQueryClient()
 
   const { data: site } = useQuery<Site>({
@@ -123,28 +122,6 @@ export default function AttendancePage({
             </button>
           </div>
 
-          {/* 上旬 / 下旬（石綿ビューのみ） */}
-          {isAsbestos && (
-            <div className="flex rounded overflow-hidden border border-gray-300">
-              <button
-                onClick={() => setPeriod('first')}
-                className={`px-3 py-1 text-xs ${
-                  period === 'first' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                上旬（1–15日）
-              </button>
-              <button
-                onClick={() => setPeriod('second')}
-                className={`px-3 py-1 text-xs border-l border-gray-300 ${
-                  period === 'second' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                下旬（16日〜）
-              </button>
-            </div>
-          )}
-
           <div className="flex-1" />
 
           <SyncBar
@@ -171,7 +148,6 @@ export default function AttendancePage({
           <AsbestosGrid
             siteId={siteId}
             month={month}
-            period={period}
             reports={reports}
             onRefresh={() => qc.invalidateQueries({ queryKey: reportsKey })}
           />
