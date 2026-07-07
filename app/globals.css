@@ -25,6 +25,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* iOS Safari は 16px 未満の入力にフォーカスすると画面を自動ズームするため、
+   タッチ端末のみフォームコントロールを 16px にする */
+@media (pointer: coarse) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
+
 @page {
   size: A3 landscape;
   margin: 12mm 8mm;

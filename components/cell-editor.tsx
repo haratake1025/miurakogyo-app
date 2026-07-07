@@ -115,7 +115,7 @@ export function CellEditor({ siteId, workerId, date, report, isAsbestos, onClose
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
       <div
-        className="bg-white rounded-lg shadow-xl w-80 p-5"
+        className="bg-white rounded-lg shadow-xl w-full max-w-80 mx-4 p-5"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

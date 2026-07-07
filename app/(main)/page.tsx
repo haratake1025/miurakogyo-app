@@ -60,9 +60,9 @@ export default function SiteListPage() {
     <div className="flex flex-col h-full">
       {/* ヘッダ */}
       <div className="px-6 py-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h1 className="text-xl font-bold">現場一覧</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {importResult && !pullMasters.isPending && (
               <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1 whitespace-nowrap">
                 完了: 現場 新規{importResult.sites.inserted}件・更新{importResult.sites.updated}件 / 作業者{importResult.workers}件
