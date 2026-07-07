@@ -47,7 +47,7 @@ export default function AttendancePage({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-5 py-3 bg-white border-b border-gray-200 print:hidden">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Link href="/" className="hover:text-blue-600">現場一覧</Link>
@@ -61,7 +61,7 @@ export default function AttendancePage({
               <p className="text-xs text-gray-500">現場責任者: {site.manager_name}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {!isAsbestos && (
               <a
                 href={`/api/sites/${siteId}/export?month=${month}`}
@@ -103,11 +103,11 @@ export default function AttendancePage({
         </div>
 
         {/* 月 + 期間コントロール */}
-        <div className="flex items-center gap-4 mt-3">
+        <div className="flex flex-wrap items-center gap-4 gap-y-2 mt-3">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMonth(m => addMonths(m, -1))}
-              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
+              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 max-md:px-3 max-md:py-2 rounded hover:bg-gray-100"
             >
               ◀
             </button>
@@ -116,7 +116,7 @@ export default function AttendancePage({
             </span>
             <button
               onClick={() => setMonth(m => addMonths(m, 1))}
-              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100"
+              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 max-md:px-3 max-md:py-2 rounded hover:bg-gray-100"
             >
               ▶
             </button>

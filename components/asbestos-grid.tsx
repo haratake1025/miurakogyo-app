@@ -59,7 +59,7 @@ export function AsbestosGrid({ siteId, month, reports, onRefresh }: Props) {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto touch-manipulation">
         <table className="border-collapse text-xs">
           <thead>
             <tr>

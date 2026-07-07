@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, Fragment } from 'react'
+import { useState, useEffect, useRef, useMemo, useSyncExternalStore, Fragment } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { ReportRow, WorkerSummary } from '@/types/frontend'
@@ -17,6 +17,21 @@ type Props = {
   reports: ReportRow[]
   isAsbestos: boolean
   onRefresh: () => void
+}
+
+// タッチ主体の端末（スマホ・タブレット）かどうか。SSR時は false
+function subscribeCoarsePointer(callback: () => void) {
+  const mq = window.matchMedia('(pointer: coarse)')
+  mq.addEventListener('change', callback)
+  return () => mq.removeEventListener('change', callback)
+}
+
+function useCoarsePointer(): boolean {
+  return useSyncExternalStore(
+    subscribeCoarsePointer,
+    () => window.matchMedia('(pointer: coarse)').matches,
+    () => false
+  )
 }
 
 type EditTarget = { workerId: string; date: string; report: ReportRow | null }
@@ -89,6 +104,8 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   const [isDragging, setIsDragging] = useState(false)
   const [showBulkEdit, setShowBulkEdit] = useState(false)
   const [showTotals, setShowTotals] = useState(false)
+  const isCoarse = useCoarsePointer()
+  const [selectMode, setSelectMode] = useState(false)
 
   // Map of all available workers (reports + manually added)
   const allWorkerMap = useMemo(() => {
@@ -301,6 +318,19 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
     e.preventDefault()
     hasDraggedRef.current = false
 
+    // タッチ端末: ドラッグ選択は使わず、選択モード中のタップで矩形を拡張する
+    if (isCoarse) {
+      hasDraggedRef.current = true
+      if (selectMode) {
+        setSelection(prev =>
+          prev
+            ? { anchor: prev.anchor, active: { wIdx, dIdx } }
+            : { anchor: { wIdx, dIdx }, active: { wIdx, dIdx } }
+        )
+      }
+      return
+    }
+
     if (e.shiftKey && selection) {
       setSelection({ anchor: selection.anchor, active: { wIdx, dIdx } })
       hasDraggedRef.current = true
@@ -321,6 +351,16 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   }
 
   function handleCellMouseUp(wIdx: number, dIdx: number, worker: WorkerSummary, day: string) {
+    // タッチ端末: 通常モードはシングルタップで即エディタを開く
+    if (isCoarse) {
+      if (!selectMode) {
+        const report = reportMap.get(`${worker.id}_${day}`) ?? null
+        setEditing({ workerId: worker.id, date: day, report })
+        setSelection(null)
+      }
+      return
+    }
+
     if (!hasDraggedRef.current) {
       const last = lastClickedRef.current
       if (last && last.wIdx === wIdx && last.dIdx === dIdx) {
@@ -436,7 +476,20 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 min-h-[44px]">
+      <div className="flex flex-wrap items-center gap-3 gap-y-1 px-4 py-2 border-b border-gray-200 min-h-[44px]">
+        {isCoarse && (
+          <button
+            onClick={() => {
+              setSelectMode(v => {
+                if (v) setSelection(null)
+                return !v
+              })
+            }}
+            className={`text-sm px-3 py-1.5 border rounded ${selectMode ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+          >
+            選択モード
+          </button>
+        )}
         {selection ? (
           <>
             <span className="text-sm font-medium text-blue-700">{selCount}件選択中</span>
@@ -492,7 +545,9 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
               人工合計
             </button>
             {clipboard && (
-              <span className="text-xs text-gray-400 ml-2 italic">コピー済（セル選択後に Ctrl+V）</span>
+              <span className="text-xs text-gray-400 ml-2 italic">
+                {isCoarse ? 'コピー済（セル選択後に貼り付け）' : 'コピー済（セル選択後に Ctrl+V）'}
+              </span>
             )}
             <span className="ml-auto text-xs text-gray-600">
               延べ人数: <span className="font-semibold">{reports.length}人日</span>
@@ -502,7 +557,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-auto" style={{ userSelect: 'none' }}>
+      <div className="flex-1 overflow-auto touch-manipulation" style={{ userSelect: 'none' }}>
         <table className="border-collapse text-xs">
           <thead>
             <tr>
