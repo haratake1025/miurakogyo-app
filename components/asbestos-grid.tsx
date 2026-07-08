@@ -46,8 +46,8 @@ export function AsbestosGrid({ siteId, month, reports, onRefresh }: Props) {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      {/* Legend */}
-      <div className="px-4 py-2 border-b border-gray-200 flex flex-wrap gap-x-4 gap-y-1">
+      {/* Legend（携帯では非表示。セル編集時のプルダウンに全文表示されるため） */}
+      <div className="max-md:hidden px-4 py-2 border-b border-gray-200 flex flex-wrap gap-x-4 gap-y-1">
         <span className="text-xs text-gray-500 font-medium">作業内容:</span>
         {Object.entries(WORK_LABEL).map(([id, label]) => (
           <span key={id} className="text-xs text-gray-500">{label}</span>

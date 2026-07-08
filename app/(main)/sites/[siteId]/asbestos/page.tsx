@@ -38,7 +38,7 @@ export default function AsbestosPage({
   return (
     <div className="flex flex-col h-full">
       {/* 通常ヘッダ（印刷時は非表示） */}
-      <div className="px-5 py-3 bg-white border-b border-gray-200 print:hidden">
+      <div className="px-3 py-2 md:px-5 md:py-3 bg-white border-b border-gray-200 print:hidden">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -46,8 +46,8 @@ export default function AsbestosPage({
               <span>/</span>
               <span>{site?.name ?? '...'}</span>
             </div>
-            <h1 className="text-lg font-bold text-gray-900 mt-0.5">石綿作業従事者作業記録</h1>
-            <div className="text-xs text-gray-500 mt-0.5 space-x-3">
+            <h1 className="text-lg font-bold text-gray-900 mt-0.5 max-md:hidden">石綿作業従事者作業記録</h1>
+            <div className="text-xs text-gray-500 mt-0.5 space-x-3 max-md:hidden">
               {site?.client_name && <span>管轄: {site.client_name}</span>}
               {site?.manager_name && <span>責任者: {site.manager_name}</span>}
             </div>
@@ -70,20 +70,20 @@ export default function AsbestosPage({
         </div>
 
         {/* Month switcher */}
-        <div className="flex flex-wrap items-center gap-4 gap-y-2 mt-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 md:gap-4 gap-y-2 mt-2 md:mt-3">
+          <div className="flex items-center gap-1 md:gap-2">
             <button
               onClick={() => setMonth(m => addMonths(m, -1))}
-              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 max-md:px-3 max-md:py-2 rounded hover:bg-gray-100"
+              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 max-md:px-2.5 max-md:py-1 rounded hover:bg-gray-100"
             >
               ◀
             </button>
-            <span className="font-semibold text-gray-800 min-w-24 text-center">
+            <span className="font-semibold text-gray-800 min-w-24 max-md:min-w-20 max-md:text-sm text-center">
               {formatMonth(month)}
             </span>
             <button
               onClick={() => setMonth(m => addMonths(m, 1))}
-              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 max-md:px-3 max-md:py-2 rounded hover:bg-gray-100"
+              className="text-gray-500 hover:text-gray-800 px-2 py-0.5 max-md:px-2.5 max-md:py-1 rounded hover:bg-gray-100"
             >
               ▶
             </button>

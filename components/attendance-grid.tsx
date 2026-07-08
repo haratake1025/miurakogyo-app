@@ -476,7 +476,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 gap-y-1 px-4 py-2 border-b border-gray-200 min-h-[44px]">
+      <div className="flex flex-wrap items-center gap-3 gap-y-1 px-3 py-1.5 md:px-4 md:py-2 border-b border-gray-200 min-h-[38px] md:min-h-[44px]">
         {isCoarse && (
           <button
             onClick={() => {
@@ -549,7 +549,7 @@ export function AttendanceGrid({ siteId, month, reports, isAsbestos, onRefresh }
                 {isCoarse ? 'コピー済（セル選択後に貼り付け）' : 'コピー済（セル選択後に Ctrl+V）'}
               </span>
             )}
-            <span className="ml-auto text-xs text-gray-600">
+            <span className="ml-auto text-xs text-gray-600 max-md:hidden">
               延べ人数: <span className="font-semibold">{reports.length}人日</span>
             </span>
           </>
