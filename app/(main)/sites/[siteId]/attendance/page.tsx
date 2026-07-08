@@ -66,7 +66,7 @@ export default function AttendancePage({
               <a
                 href={`/api/sites/${siteId}/export?month=${month}`}
                 download
-                className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
+                className="max-md:hidden text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
               >
                 Excel出力
               </a>
@@ -75,7 +75,7 @@ export default function AttendancePage({
               <a
                 href={`/api/sites/${siteId}/asbestos-export?month=${month}`}
                 download
-                className="text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
+                className="max-md:hidden text-xs px-3 py-1.5 border border-green-300 text-green-700 rounded hover:bg-green-50"
               >
                 Excel出力
               </a>
@@ -122,15 +122,17 @@ export default function AttendancePage({
             </button>
           </div>
 
-          <div className="flex-1" />
+          <div className="flex-1 max-md:hidden" />
 
-          <SyncBar
-            siteId={siteId}
-            month={month}
-            unsyncedCount={unsyncedCount}
-            reportsQueryKey={reportsKey}
-            inline
-          />
+          <div className="max-md:hidden">
+            <SyncBar
+              siteId={siteId}
+              month={month}
+              unsyncedCount={unsyncedCount}
+              reportsQueryKey={reportsKey}
+              inline
+            />
+          </div>
         </div>
       </div>
 
