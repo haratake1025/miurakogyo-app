@@ -4,7 +4,7 @@ import type { WorkerSummary } from '@/types/frontend'
 function companyPriority(companyName: string | null | undefined): number {
   const name = companyName ?? ''
   if (name.includes('ニチアス')) return 0
-  if (name === '三浦興業') return 1
+  if (name.includes('三浦興業')) return 1
   return 2
 }
 

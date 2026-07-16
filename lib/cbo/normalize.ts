@@ -82,7 +82,7 @@ export function toEmployeeRow(emp: CboEmployee): WorkerRow {
     cbo_company_user_id: emp.cboCompanyUserId,
     cbo_supplier_id: null,
     cbo_supplier_staff_id: null,
-    company_name: '三浦興業',
+    company_name: '株式会社三浦興業',
     worker_name: emp.workerName,
     name_kana: emp.nameKana,
     tel: emp.tel,

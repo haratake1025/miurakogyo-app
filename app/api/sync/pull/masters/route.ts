@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
         employeeRows
           .filter(r => existingEmpIds.has(r.cbo_company_user_id!))
           .map(row => supabase.from('workers')
-            .update({ worker_name: row.worker_name, name_kana: row.name_kana, tel: row.tel, last_synced_at: row.last_synced_at })
+            .update({ worker_name: row.worker_name, company_name: row.company_name, name_kana: row.name_kana, tel: row.tel, last_synced_at: row.last_synced_at })
             .eq('cbo_company_user_id', row.cbo_company_user_id!)
             .then(({ error }) => { if (error) throw new Error(error.message) })
           )
